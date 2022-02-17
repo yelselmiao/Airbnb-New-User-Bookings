@@ -1,1 +1,1 @@
-# STAT447B
+# Airbnb New User Bookings Project
