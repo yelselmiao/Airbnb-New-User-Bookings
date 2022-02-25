@@ -8,7 +8,7 @@ ________________________________________________________________________
   -- sa, Plot
 2. Choose a base line model, feature engineering (variable selection)
 ________________________________________________________________________
-Rubric:
+##  Rubric:
 
 15 points for Content and Scientific Merit; divided into
 (i) 3 points for introduction (background, importance, objective),
@@ -17,7 +17,7 @@ Rubric:
 
 ________________________________________________________________________
 
-Slides: <= 15  (1-2)  aiming :12
+## Slides: <= 15  (1-2)  aiming :12
 
 3-4 Introduction 
   - Project Overview (background, Objective, Importance)
