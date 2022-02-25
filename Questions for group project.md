@@ -20,24 +20,24 @@ ________________________________________________________________________
 Slides: <= 15  (1-2)  aiming :12
 
 3-4 Introduction 
-  -- Project Overview (background, Objective, Importance)
-      -- Propaganda, advertising target population, renter selection, fee
-  -- Dataset Overview
-    -- nrow(test/train), n(varibale), reponse, predictors, continuous, categorical(level)
+  - Project Overview (background, Objective, Importance)
+      - Propaganda, advertising target population, renter selection, fee
+  - Dataset Overview
+    - nrow(test/train), n(varibale), reponse, predictors, continuous, categorical(level)
 6-8 EDA
-  -- Missing Value
-  -- Inbalance Class (Predictor & Response)
-  -- Transforming
-    -- Outlier Process
-    -- Skewness
-    -- Correlation
+  - Missing Value
+  - Inbalance Class (Predictor & Response)
+  - Transforming
+    - Outlier Process
+    - Skewness
+    - Correlation
 1-2 methodology (Briefly Explain)
-  -- Set Baseline Model
-  -- Variable Selection
-  -- Ultimate Model; Model for Comparision
-    -- Cross Validation (K-fold)
+  - Set Baseline Model
+  - Variable Selection
+  - Ultimate Model; Model for Comparision
+    - Cross Validation (K-fold)
 1-2 Conclusion
-  -- ...
+  - ...
     
 
     
