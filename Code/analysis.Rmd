@@ -1,0 +1,128 @@
+---
+title: "R Notebook"
+author: Shuyi Tan
+output: github_document
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r Library}
+suppressPackageStartupMessages(library(tidyverse))
+suppressPackageStartupMessages(library(lubridate))
+```
+
+```{r Load Data, echo=TRUE}
+data_path <- paste0(here::here(), '/Data/')
+countries <- read.csv(paste0(data_path,"countries.csv"))
+demo <- read.csv(paste0(data_path,"age_gender_bkts.csv"))   
+session <- read.csv(paste0(data_path,"sessions.csv"))
+df <- read.csv(paste0(data_path,"train_users_2.csv"))
+```
+
+Varaibles in `df`: 
+- id: user id  
+- date_account_created: the date of account creation  
+- timestamp_first_active: timestamp of the first activity, note that it can be earlier than  
+(date_account_created or date_first_booking because a user can search before signing up)
+- date_first_booking: date of first booking  
+- gender  
+- age  
+- signup_method  
+- signup_flow: the page a user came to signup up from  
+- language: international language preference  
+- affiliate_channel: what kind of paid marketing  
+- affiliate_provider: where the marketing is e.g. google, craigslist, other  
+- first_affiliate_tracked: whats the first marketing the user interacted with before the signing up  
+- signup_app  
+- first_device_type  
+- first_browser  
+- country_destination: respsonse var  
+
+```{r missing values in age and gender}
+df[df=="" | df == "-unknown-"]<-NA
+######################################################## Age 88,898 missing vale (41.6%)
+
+# Age abnormal case 1: the data is collected in 2015, accounding to the Airbnb term of use, the minimum age required for account creation is 18, so I assume ages < 18 are faulty inputs
+# Age abnormal case 2: similarily, for those who wrong entered year as age, if it's greater than 2015-18 = 1997, it;s faulty (750 rows)
+# convert these problematic age entries as NA
+df$age[df$age < 18 | df$age > 1997] <- NA
+
+
+######################################################## Gender (95688 missing value) - (44.8%)
+nrow(df %>% 
+  filter(is.na(gender))) 
+
+
+# since it's far beyond acceptable proportion of missing value in terms of age and gender, I think a complete case analysis is more reasonable than imputed data anlaysis
+df_cc <- df %>% 
+  filter(!is.na(gender) & !is.na(age))
+  
+```
+
+
+```{r check data missing for other char columns}
+map(df_cc, ~sum(is.na(.))/nrow(df_cc))
+
+# date_first_booking: 124543 (47.9%) 
+# TBD: consider drop this column 
+
+# first_affiliate_tracked: 6065 (1.6%)
+# first_browser: 27266 (9.8%)
+# leave these two columns aside for now
+```
+
+```{r convert data col & convert char to factor, warning = FALSE}
+df_cc <- df_cc %>%
+  mutate(
+    date_first_active = as.Date(ymd_hms(timestamp_first_active),'%Y-%m-%d'),
+    date_account_created = as.Date(date_account_created, '%Y-%m-%d'),
+    date_first_booking = as.Date(date_first_booking, '%Y-%m-%d')
+  ) %>% 
+  relocate(date_first_active, .before = date_first_booking) %>%
+  select(-timestamp_first_active) %>%
+  mutate_at(as.factor,.vars = vars(7:16)) 
+```
+
+```{r check factor cols (contingency table)}
+# check the level of each factor column
+# df_cc %>% 
+#   select(signup_method:country_destination) %>%
+#   sapply(levels)
+
+# contingency table of each factor column
+df_cc %>%
+  select(signup_method:country_destination) %>%
+  map(function(x)
+    table(x))  # some inbalanced classes
+
+first_browser_drop <- unique(df_cc %>%
+                               group_by(first_browser) %>%
+                               filter(n() < 10) %>% select(first_browser))
+
+# drop levels that has extremly small counts 
+df_cc <- df_cc %>%
+  filter((!signup_flow %in% c('4', '10', '15', '20')) &
+           (!language %in% c('ca', 'hr', 'is')) &
+           (affiliate_provider != 'wayn') &
+           (!first_browser %in% first_browser_drop$first_browser))
+str(df_cc)  
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
