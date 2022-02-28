@@ -109,6 +109,20 @@ str(df_cc)
 ```
 
 
+```{r sort desctinations}
+df_cc <- df_cc %>% 
+  mutate(NDF = ifelse(country_destination == 'NDF', 1, 0),
+         continent_des = case_when(country_destination %in% c('DE', 'FR', 'GB', 'IT', 'NL', 'PT', 'ES')~'Europe',
+                                   country_destination == 'AU'~'Australia',
+                                   country_destination %in% c('CA', 'US')~'Americas',
+                                   country_destination == 'other' ~ 'other',
+                                   country_destination == 'NDF' ~ 'NDF'))
+# check prop of NDF and continents                                   
+df_cc %>%
+  select(NDF,continent_des) %>%
+  map(function(x)
+    table(x))                                                                
+```
 
 
 
