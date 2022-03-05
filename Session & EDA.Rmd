@@ -1,0 +1,122 @@
+---
+title: "Airbnb New User"
+---
+
+Airbnb challenges you to predict in which country a new user will make his or her first booking
+
+In this challenge, you are given a list of users along with their demographics, web session records, and some summary statistics. You are asked to predict which country a new user's first booking destination will be. All the users in this dataset are from the USA.
+
+There are 12 possible outcomes of the destination country: 'US', 'FR', 'CA', 'GB', 'ES', 'IT', 'PT', 'NL','DE', 'AU', 'NDF' (no destination found), and 'other'. Please note that 'NDF' is different from 'other' because 'other' means there was a booking, but is to a country not included in the list, while 'NDF' means there wasn't a booking.
+
+The training and test sets are split by dates. In the test set, you will predict all the new users with first activities after 7/1/2014 (note: this is updated on 12/5/15 when the competition restarted). In the sessions dataset, the data only dates back to 1/1/2014, while the users dataset dates back to 2010. 
+
+https://www.kaggle.com/c/airbnb-recruiting-new-user-bookings/data
+
+### Data Wrangling and Cleanning -> Refer to Sheyi -> cleaned Data 
+```{r library}
+suppressPackageStartupMessages(library(tidyverse))
+suppressPackageStartupMessages(library(ggplot2))
+suppressPackageStartupMessages(library(ggridges))
+```
+
+
+```{r Load Data, message=FALSE, warning=FALSE}
+users_train <- readRDS("data/cleaned_data.rds")
+# users_train <- read_csv("data/train_users_2.csv")
+users_test <- read_csv("data/test_users.csv")
+age_gender_bkts <- read_csv("data/age_gender_bkts.csv")
+sessions <- read_csv("data/sessions.csv")
+countries <- read_csv("data/countries.csv")
+```
+
+### EDA
+
+```{r}
+# Join users_train & session
+# train_session <- sessions %>% filter(user_id %in% users_train$id) %>% 
+#   left_join(users_train, by = c("user_id" = "id"))
+```
+
+
+### Clean session
+reference: https://www.diva-portal.org/smash/get/diva2:1108334/FULLTEXT01.pdf
+```{r action clean, message=FALSE}
+#' Fill na is time elpse with 0 
+#' Change -unknown- level in action, action_type, action_detail to NA
+#' Drop rows for which "user_id == NA"
+sessions <- sessions %>% mutate(secs_elapsed = replace_na(secs_elapsed, 0))
+# sessions <- sessions %>% mutate(across(.cols = everything(), function(t){
+#   t <- ifelse(t == "-unknown-", NA, t)
+# })) # Replace -unknown- with NA
+sessions <- sessions %>% drop_na(user_id)
+
+# subset session for testing
+# session = sessions %>% head(nrow(sessions)/50)
+# Deduction action pairs that has a count less then 1% of the train set
+target_deduction <- nrow(sessions) * 0.01
+
+# Obtain action count per user 
+session_by_user <- sessions %>% group_by(user_id) %>% nest()
+session_by_user$data <- lapply(session_by_user$data, function(df){
+    df <- df %>%  select(-c(device_type, secs_elapsed)) %>% 
+      group_by(action, action_type, action_detail) %>% 
+      summarise(action_count = n(), .groups = "drop")
+    return(df)
+})
+session_by_user <- session_by_user %>% unnest(cols = c(data))
+
+#' obtain a total count for action graoups
+#' Considering the number of predictors, binned small ones to other
+action_by_user <- session_by_user %>% 
+  mutate(action_group = paste(action, action_type, action_detail, sep = "_")) %>% 
+  select(-c(action, action_type, action_detail)) %>% 
+  group_by(action_group) %>% nest()
+action_by_user$group_count <- lapply(action_by_user$data, nrow) %>% unlist()
+action_by_user <- action_by_user %>% 
+  mutate(action_group = ifelse(group_count <= target_deduction, "Other", action_group)) %>% 
+  unnest(cols = c(data, group_count))
+
+#' Rearrange & Merge by action group and user_id
+# 'Obtain proportion of the count per user_id 
+action_by_user = action_by_user %>% group_by(user_id, action_group) %>% 
+  summarise_each(funs = sum) %>% 
+  mutate(action_proportion = action_count/group_count) %>%
+  select(user_id, action_group, action_proportion)
+
+#' Pivot Wider to obtain the final action_data
+action <- action_by_user %>% pivot_wider(id_cols = user_id, names_from = action_group,
+                                         values_from = action_proportion) %>% 
+  replace(is.na(.), 0)
+rm(session_by_user, action_by_user)
+```
+
+```{r device clean}
+device_by_user <- sessions %>% select(-c(action, action_type, action_detail)) %>% 
+  group_by(user_id) %>% nest()
+#' For each users, if the device type is NA and second elpseed is not, 
+#' we will categorize the device type as -unknow-
+device_by_user$data <- lapply(device_by_user$data, function(df){
+  df <- df %>% mutate(device_type = replace_na(device_type, "-unknown-"))
+})
+#' Summarize users device type and seconds elapsed
+device_by_user <- device_by_user %>% unnest(cols = c(data)) %>% ungroup() %>% 
+  group_by(user_id, device_type) %>% 
+  summarise_each(funs = sum)
+
+#' Pivot Wider to obtain the final device data
+device <- device_by_user %>% pivot_wider(id_cols = user_id, names_from = device_type, 
+                                         values_from = secs_elapsed, values_fill = 0)
+```
+
+```{r Merge action, device & user_tain}
+user_session_train <- users_train %>% left_join(action, by = c("id" = "user_id")) %>% 
+  left_join(device, by = c("id" = "user_id"))
+user_session_test <- users_test %>% left_join(action, by = c("id" = "user_id")) %>% 
+  left_join(device, by = c("id" = "user_id"))
+cleaned_session <- full_join(action, device, on = "user_id")
+```
+
+```{r Save cleaned data}
+save(user_session_train, user_session_test, cleaned_session, file = "cleaned_session.RData")
+```
+
