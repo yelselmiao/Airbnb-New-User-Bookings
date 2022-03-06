@@ -9,6 +9,7 @@ editor_options:
 ```{r Library}
 suppressPackageStartupMessages(library(tidyverse))
 suppressPackageStartupMessages(library(lubridate))
+suppressPackageStartupMessages(library(mice))
 ```
 
 ```{r Load Data, echo=TRUE}
@@ -73,18 +74,8 @@ chisq.test(df_miss$miss, df_miss$country_destination)
 ```
 
 
-
-
-```{r}
-df_miss <- df %>% 
-  mutate(miss = ifelse(!is.na(gender) & !is.na(age), 0, 1),
-         miss = as.factor(miss)) 
-chisq.test(df_miss$miss, df_miss$country_destination)
-```
-
-
-
 ```{r check data missing for other char columns}
+map(df, ~sum(is.na(.))/nrow(df))
 map(df_cc, ~sum(is.na(.))/nrow(df_cc))
 
 # date_first_booking: 124543 (47.9%) 
@@ -95,8 +86,17 @@ map(df_cc, ~sum(is.na(.))/nrow(df_cc))
 # leave these two columns aside for now
 ```
 
+```{r impute first_affiliate_tracked and first_browser}
+df_cc_init <- mice(df_cc, maxit = 0)
+meth <- df_cc_init$meth
+meth[!names(meth) %in% c("first_affiliate_tracked", "first_browser")] <- ""
+df_cc_imp_5 <- mice(df_cc, meth = meth, seed = 1234, m = 5)
+df_cc_imp <- complete(df_cc_imp_5)
+```
+
+
 ```{r convert data col & convert char to factor, warning = FALSE}
-df_cc <- df_cc %>%
+df_cc_imp <- df_cc_imp %>%
   mutate(
     date_first_active = as.Date(ymd_hms(timestamp_first_active),'%Y-%m-%d'),
     date_account_created = as.Date(date_account_created, '%Y-%m-%d'),
@@ -114,36 +114,37 @@ df_cc <- df_cc %>%
 #   sapply(levels)
 
 # contingency table of each factor column
-df_cc %>%
+df_cc_imp %>%
   select(signup_method:country_destination) %>%
   map(function(x)
     table(x))  # some inbalanced classes
 
-first_browser_drop <- unique(df_cc %>%
+first_browser_drop <- unique(df_cc_imp %>%
                                group_by(first_browser) %>%
                                filter(n() < 10) %>% select(first_browser))
 
 # drop levels that has extremly small counts 
-df_cc <- df_cc %>%
+df_cc_imp <- df_cc_imp %>%
   filter((!signup_flow %in% c('4', '10', '15', '20')) &
            (!language %in% c('ca', 'hr', 'is')) &
            (affiliate_provider != 'wayn') &
            (!first_browser %in% first_browser_drop$first_browser))
-str(df_cc)  
+str(df_cc_imp)  
 ```
 
 
 ```{r sort desctinations}
-df_cc <- df_cc %>% 
+df_cc_imp <- df_cc_imp %>% 
   mutate(NDF = ifelse(country_destination == 'NDF', 1, 0),
          continent_des = case_when(country_destination %in% c('DE', 'FR', 'GB', 'IT', 'NL', 'PT', 'ES')~'Europe',
                                    country_destination == 'AU'~'Australia',
                                    country_destination %in% c('CA', 'US')~'Americas',
                                    country_destination == 'other' ~ 'other',
                                    country_destination == 'NDF' ~ 'NDF'))
+
 # check prop of NDF and continents                                   
-df_cc %>%
-  select(NDF,continent_des) %>%
+df_cc_imp %>%
+  select(NDF,country_destination, continent_des) %>%
   map(function(x)
     table(x))                                                                
 ```
