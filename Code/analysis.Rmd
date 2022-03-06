@@ -46,18 +46,42 @@ df[df=="" | df == "-unknown-"]<-NA
 # Age abnormal case 2: similarily, for those who wrong entered year as age, if it's greater than 2015-18 = 1997, it;s faulty (750 rows)
 # convert these problematic age entries as NA
 df$age[df$age < 18 | df$age > 1997] <- NA
-
-
+# convert problematic year entry to age
+df <- df %>% 
+  mutate(true_age = ifelse(age > 1000, 2015 - age, age))
+  
 ######################################################## Gender (95688 missing value) - (44.8%)
 nrow(df %>% 
   filter(is.na(gender))) 
 
 
-# since it's far beyond acceptable proportion of missing value in terms of age and gender, I think a complete case analysis is more reasonable than imputed data anlaysis
+# since it's far beyond acceptable proportion of missing value in terms of age and gender, I think a complete case analysis is perhaps more reasonable than imputed data analysis (will verify)
 df_cc <- df %>% 
   filter(!is.na(gender) & !is.na(age))
-  
 ```
+
+
+```{r visualize missingness in gender and age, fig.width=8, fig.height=3}
+destination_prop_plot(df_cc)
+destination_prop_plot(df)
+
+df_miss <- df %>% 
+  mutate(miss = ifelse(!is.na(gender) & !is.na(age), 0, 1),
+         miss = as.factor(miss)) 
+
+chisq.test(df_miss$miss, df_miss$country_destination)
+```
+
+
+
+
+```{r}
+df_miss <- df %>% 
+  mutate(miss = ifelse(!is.na(gender) & !is.na(age), 0, 1),
+         miss = as.factor(miss)) 
+chisq.test(df_miss$miss, df_miss$country_destination)
+```
+
 
 
 ```{r check data missing for other char columns}
