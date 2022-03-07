@@ -21,20 +21,14 @@ suppressPackageStartupMessages(library(ggridges))
 
 
 ```{r Load Data, message=FALSE, warning=FALSE}
-users_train <- readRDS("data/cleaned_data.rds")
+load(paste0(data_path,"cleaned_train.RData"))
+users_train <- df_cc_imp 
+rm(df_cc_imp)
 # users_train <- read_csv("data/train_users_2.csv")
-users_test <- read_csv("data/test_users.csv")
-age_gender_bkts <- read_csv("data/age_gender_bkts.csv")
-sessions <- read_csv("data/sessions.csv")
-countries <- read_csv("data/countries.csv")
-```
-
-### EDA
-
-```{r}
-# Join users_train & session
-# train_session <- sessions %>% filter(user_id %in% users_train$id) %>% 
-#   left_join(users_train, by = c("user_id" = "id"))
+users_test <- read_csv(paste0(data_path,"test_users.csv"))
+age_gender_bkts <- read.csv(paste0(data_path,"age_gender_bkts.csv"))   
+sessions <- read.csv(paste0(data_path,"sessions.csv"), na = c("", "NA"))
+countries <- read.csv(paste0(data_path,"countries.csv"))
 ```
 
 
@@ -51,9 +45,7 @@ sessions <- sessions %>% mutate(secs_elapsed = replace_na(secs_elapsed, 0))
 sessions <- sessions %>% drop_na(user_id)
 
 # subset session for testing
-# session = sessions %>% head(nrow(sessions)/50)
-# Deduction action pairs that has a count less then 1% of the train set
-target_deduction <- nrow(sessions) * 0.01
+# sessions = sessions %>% head(nrow(sessions)/500)
 
 # Obtain action count per user 
 session_by_user <- sessions %>% group_by(user_id) %>% nest()
@@ -72,6 +64,11 @@ action_by_user <- session_by_user %>%
   select(-c(action, action_type, action_detail)) %>% 
   group_by(action_group) %>% nest()
 action_by_user$group_count <- lapply(action_by_user$data, nrow) %>% unlist()
+
+#' Deduction action pairs that has a count less then 1% of the train set
+#' Using 0.005 leave us with 9 most significant categories
+target_deduction <- nrow(sessions) * 0.005
+
 action_by_user <- action_by_user %>% 
   mutate(action_group = ifelse(group_count <= target_deduction, "Other", action_group)) %>% 
   unnest(cols = c(data, group_count))
@@ -98,15 +95,29 @@ device_by_user <- sessions %>% select(-c(action, action_type, action_detail)) %>
 device_by_user$data <- lapply(device_by_user$data, function(df){
   df <- df %>% mutate(device_type = replace_na(device_type, "-unknown-"))
 })
-#' Summarize users device type and seconds elapsed
-device_by_user <- device_by_user %>% unnest(cols = c(data)) %>% ungroup() %>% 
-  group_by(user_id, device_type) %>% 
-  summarise_each(funs = sum)
+
+# Obtain device proporption for second elpased for each device
+device_by_user$data <- lapply(device_by_user$data, function(df){
+  return(df %>% group_by(device_type) %>% 
+           summarise(time_elpse_by_device = sum(secs_elapsed)) %>% 
+           mutate(time_elpse_by_device = time_elpse_by_device/sum(time_elpse_by_device)))})
+device_by_user <- device_by_user %>% unnest(cols = c(data))
 
 #' Pivot Wider to obtain the final device data
-device <- device_by_user %>% pivot_wider(id_cols = user_id, names_from = device_type, 
-                                         values_from = secs_elapsed, values_fill = 0)
+device_by_user = device_by_user %>% pivot_wider(id_cols = user_id, names_from = device_type, 
+                                                values_from = time_elpse_by_device, values_fill = 0)
+
+#' For the purpose of the model, devices with a mean proportions smaller than 0.01 is combined as other
+device_name = device_by_user %>% ungroup() %>% select(-user_id) %>% colMeans(na.rm = TRUE)
+device_name = device_name[device_name < 0.01] %>% names()
+other = device_by_user[device_name]
+other = rowSums(other)
+
+device = device_by_user[colnames(device_by_user)[!colnames(device_by_user) %in% device_name]] %>%
+  ungroup() %>% mutate(other = other)
 ```
+
+
 
 ```{r Merge action, device & user_tain}
 user_session_train <- users_train %>% left_join(action, by = c("id" = "user_id")) %>% 
@@ -117,6 +128,28 @@ cleaned_session <- full_join(action, device, on = "user_id")
 ```
 
 ```{r Save cleaned data}
-save(user_session_train, user_session_test, cleaned_session, file = "cleaned_session.RData")
+save(action, device, user_session_train, user_session_test, cleaned_session, 
+     file = "cleaned_session.RData")
+```
+
+
+### EDA
+
+#### User_train
+```{r}
+# Only plot one of the true age
+user_session_train %>% select(c(16,17, 20:34)) %>% plot_sbs_box()
+```
+
+#### Sessions
+```{r}
+test_session_prop = sessions %>% 
+  summarise_all(.funs = ~sum(is.na(.)/ nrow(sessions))  * 100) %>% 
+  t() %>% as.data.frame() %>% 
+  mutate(type = row.names(.)) %>% rename(missing_proportion = "V1")
+ggplot(test_session_prop, aes(x = type, y = missing_proportion, 
+                              fill = type, label = round(missing_proportion,2))) + 
+  geom_bar(stat = "identity", alpha = 0.6) + ylab("Missing Proportion % ") + 
+  xlab("Variable") + geom_text() + theme(legend.position = "top")
 ```
 
