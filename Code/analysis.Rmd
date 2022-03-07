@@ -16,7 +16,7 @@ suppressPackageStartupMessages(library(mice))
 data_path <- paste0(here::here(), '/Data/')
 countries <- read.csv(paste0(data_path,"countries.csv"))
 demo <- read.csv(paste0(data_path,"age_gender_bkts.csv"))   
-session <- read.csv(paste0(data_path,"sessions.csv"))
+# session <- read.csv(paste0(data_path,"sessions.csv"))
 df <- read.csv(paste0(data_path,"train_users_2.csv"))
 ```
 
@@ -86,7 +86,7 @@ map(df_cc, ~sum(is.na(.))/nrow(df_cc))
 # leave these two columns aside for now
 ```
 
-```{r impute first_affiliate_tracked and first_browser}
+```{r impute first_affiliate_tracked and first_browser, echo = TRUE}
 df_cc_init <- mice(df_cc, maxit = 0)
 meth <- df_cc_init$meth
 meth[!names(meth) %in% c("first_affiliate_tracked", "first_browser")] <- ""
@@ -149,7 +149,26 @@ df_cc_imp %>%
     table(x))                                                                
 ```
 
-
+```{r continent count plot}
+ continent <- df_cc_imp %>%
+    count(continent_des) %>%
+    mutate(
+      perc = round(proportions(n) * 100, 1),
+      res = str_c(n, "(", perc, ")%"),
+      continent_des = as.factor(continent_des)
+    )
+  
+ggplot(continent, aes(continent_des, n, fill = continent_des)) +
+  geom_col() +
+  geom_text(aes(label = res), vjust = -0.5) +
+  labs(x = 'Continent', y = 'Count', fill = 'Continent') +
+  theme(
+    axis.title.x = element_text(size = 10),
+    axis.title.y = element_text(size = 10),
+    axis.text.y = element_text(size = 10),
+    axis.text.x = element_text(size = 10)
+  )
+```
 
 
 
