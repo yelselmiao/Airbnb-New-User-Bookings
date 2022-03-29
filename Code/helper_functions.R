@@ -25,7 +25,7 @@ category_comb <- function(df) {
       ),
       language = ifelse(
         language %in% c('de', 'en', 'es', 'it', 'ko', 'ru', 'zh'),
-        signup_flow,
+        language,
         'other'
       ),
       affiliate_provider = ifelse(
@@ -57,6 +57,7 @@ category_comb <- function(df) {
         'other'
       )
     )
+  return(cleaned_df)
   
 }
 
@@ -81,6 +82,25 @@ des_sorter <- function(df){
                                      country_destination == 'NDF' ~ 'NDF'))
   return(df_des_sorted)
 }
+
+
+# re-clean the loaded data prior to model fitting
+data_set_up <- function(loaded_data){
+  cleaned_data <- loaded_data %>%
+    mutate(
+      date_first_active = as.Date(date_first_active,'%Y-%m-%d'),
+      date_account_created = as.Date(date_account_created, '%Y-%m-%d')
+    ) %>% 
+    dplyr::select(-c(X, id, date_first_booking)) %>% 
+    mutate_if(is.character, as.factor)
+  
+  return(cleaned_data)
+}
+
+# operatpr 
+`%notin%` <- Negate(`%in%`)
+
+
 
 
 
