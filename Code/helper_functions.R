@@ -13,3 +13,74 @@ destination_prop_plot <- function(data){
   return(p)
   
 }
+
+#function that's used to combine categories with extremly small counts 
+category_comb <- function(df) {
+  cleaned_df <-  df %>%
+    mutate(
+      signup_flow = ifelse(
+        signup_flow %in% c('0', '1', '2', '3', '12', '23', '24', '25'),
+        signup_flow,
+        'other'
+      ),
+      language = ifelse(
+        language %in% c('de', 'en', 'es', 'it', 'ko', 'ru', 'zh'),
+        signup_flow,
+        'other'
+      ),
+      affiliate_provider = ifelse(
+        affiliate_provider %in% c(
+          'baidu',
+          'email-marketing',
+          'gsp',
+          'meetup',
+          'naver',
+          'wayn',
+          'yandex'
+        ),
+        'other',
+        affiliate_provider
+      ),
+      first_affiliate_tracked =  replace(
+        first_affiliate_tracked,
+        first_affiliate_tracked %in% c('local ops', 'marketing', 'product'),
+        'tracked-other'
+      ),
+      first_device_type = replace(
+        first_device_type,
+        first_device_type == 'SmartPhone (Other)',
+        'Other/Unknown'
+      ),
+      first_browser = ifelse(
+        first_browser %in% c('Chrome', 'Safari', 'Firefox', NA, 'IE', 'Mobile Safari'),
+        first_browser,
+        'other'
+      )
+    )
+  
+}
+
+
+# function that's used to check category count
+category_count <- function(df){
+  df %>%
+    select(signup_method:country_destination) %>%
+    map(function(x)
+      table(x))
+}
+
+
+# sort out the destination column
+des_sorter <- function(df){
+  df_des_sorted <- df %>% 
+    mutate(NDF = ifelse(country_destination == 'NDF', 1, 0),
+           continent_des = case_when(country_destination %in% c('DE', 'FR', 'GB', 'IT', 'NL', 'PT', 'ES')~'Europe',
+                                     country_destination == 'AU'~'Australia',
+                                     country_destination %in% c('CA', 'US')~'Americas',
+                                     country_destination == 'other' ~ 'other',
+                                     country_destination == 'NDF' ~ 'NDF'))
+  return(df_des_sorted)
+}
+
+
+
