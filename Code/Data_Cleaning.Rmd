@@ -121,7 +121,6 @@ df_cc_imp_5 <- mice(df_cc, meth = meth, seed = 1234, m = 5)
 df_cc_imp <- complete(df_cc_imp_5)
 ```
 
-
 ```{r convert data col & convert char to factor, warning = FALSE}
 df_cc_imp <- df_cc_imp %>%
   mutate(
@@ -130,16 +129,16 @@ df_cc_imp <- df_cc_imp %>%
     date_first_booking = as.Date(date_first_booking, '%Y-%m-%d')
   ) %>% 
   relocate(date_first_active, .before = date_first_booking) %>%
-  select(-timestamp_first_active) %>%
-  mutate_at(as.factor,.vars = vars(7:16)) 
+  select(-timestamp_first_active) 
 ```
 
 ```{r check factor cols (contingency table)}
 # contingency table of each factor column
-category_count(df_cc_imp)
+print(category_count(df_cc_imp))
 
 # combine categories with extremely small counts 
 df_cleaned <- category_comb(df_cc_imp)
+
 
 # re-factor the categories 
 df_cleaned <- df_cleaned %>% 
@@ -147,19 +146,13 @@ df_cleaned <- df_cleaned %>%
   mutate_if(is.factor, factor)
   
 # check the count of each category in each categorical variable again 
-category_count(df_cleaned)
+print(category_count(df_cleaned))
 ```
 
 
-```{r sort desctinations}
-df_cc_imp <- df_cleaned %>% 
-  mutate(NDF = ifelse(country_destination == 'NDF', 1, 0),
-         continent_des = case_when(country_destination %in% c('DE', 'FR', 'GB', 'IT', 'NL', 'PT', 'ES')~'Europe',
-                                   country_destination == 'AU'~'Australia',
-                                   country_destination %in% c('CA', 'US')~'Americas',
-                                   country_destination == 'other' ~ 'other',
-                                   country_destination == 'NDF' ~ 'NDF'))
 
+```{r sort desctinations}
+# sort the desctinations
 df_cleaned <- des_sorter(df_cleaned)
 
 # check prop of NDF and continents                                   
@@ -174,7 +167,7 @@ df_cleaned %>%
 
 
 ```{r}
-# write.csv(df_cleaned, paste0(here::here(), '/Data/df_cleaned.csv'))
+write.csv(df_cleaned, paste0(here::here(), '/Data/df_cleaned.csv'))
 ```
 
 
