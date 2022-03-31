@@ -10,7 +10,7 @@ editor_options:
 suppressPackageStartupMessages(library(tidyverse))
 suppressPackageStartupMessages(library(lubridate))
 suppressPackageStartupMessages(library(mice))
-source('helper_function_cleaning.R')
+source('helper_function.R')
 ```
 
 ```{r Load Data, echo=TRUE}
