@@ -52,32 +52,45 @@ sessions <- sessions %>% filter(user_id %in% c(users_train$id, users_test$id))
 # # subset session for testing
 # sessions = sessions %>% head(nrow(sessions)/500)
 
-# Create Action Group
-session_by_action <- sessions %>% group_by(action, action_type, action_detail) %>% 
-  summarise(freq_count = n(), .groups = "keep") %>% ungroup() %>% 
+# # Frequency Encoding, Not used
+# # Create Action Group
+# session_by_action <- sessions %>% group_by(action, action_type, action_detail) %>% 
+#   summarise(freq_count = n(), .groups = "keep") %>% ungroup() %>% 
+#   mutate(action_group = paste(action, action_type, action_detail, sep = "/")) %>%
+#   select(action_group, freq_count)
+# 
+# # Frequency encoding on session
+# sessions <- sessions %>% group_by(action, action_type, action_detail) %>% 
+#   mutate(action_group = paste(action, action_type, action_detail, sep = "/")) %>% 
+#   ungroup() %>% select(-c(action, action_type, action_detail)) %>% 
+#   group_by(user_id, action_group) %>% 
+#   left_join(session_by_action, by = "action_group") %>% ungroup() %>%
+#   select(-action_group)
+
+# Compute the number unique actions (action_group) each user performed
+num_diff_actions <- sessions %>% 
   mutate(action_group = paste(action, action_type, action_detail, sep = "/")) %>%
-  select(action_group, freq_count)
+  select(user_id, action_group) %>% 
+  group_by(user_id) %>% summarise(num_diff_action = n_distinct(action_group))
 
-# Frequency encoding on session
-sessions <- sessions %>% group_by(action, action_type, action_detail) %>% 
-  mutate(action_group = paste(action, action_type, action_detail, sep = "/")) %>% 
-  ungroup() %>% select(-c(action, action_type, action_detail)) %>% 
-  group_by(user_id, action_group) %>% 
-  left_join(session_by_action, by = "action_group") %>% ungroup() %>%
-  select(-action_group)
-
-# Compute the number of actions each user performed
-actions <- sessions %>% select(-c(device_type, secs_elapsed)) %>% 
-  distinct() %>% group_by(user_id) %>% summarise(total_action = n())
+# Compute the number different of actions each user performed in total
+actions <- sessions %>% 
+  group_by(user_id) %>% summarise(total_action = n()) %>% 
+  left_join(num_diff_actions)
+rm(num_diff_actions)
 
 #' Plot distribution of total action, it is found that the original data is heavily left skewed
 #' A log transformation is then applied as a solution
 actions %>% ggplot(aes(x = total_action)) + geom_histogram()
 actions %>% ggplot(aes(x = log(total_action))) + geom_histogram()
 
+actions %>% ggplot(aes(x = num_diff_action)) + geom_histogram()
+actions %>% ggplot(aes(x = log(num_diff_action))) + geom_histogram()
+
 # Apply log transformation
 actions <- actions %>% mutate(log_total_action = log(total_action),
-                              total_action = NULL)
+                              log_unique_actionTrp = log(num_diff_action),
+                              total_action = NULL, num_diff_action = NULL)
 
 ```
 
@@ -98,23 +111,33 @@ devices <- sessions %>% mutate(devices = plyr::mapvalues(device_type, from = org
   pivot_wider(names_from = devices, values_from = total_secs, id_cols = user_id, values_fill = 0)
 ```
 
+### Join Action & Device
+
+```{r}
+new_session <- full_join(actions, devices, by = "user_id")
+```
+
+### Join with user_train
+```{r}
+airbnb_train <- left_join(users_train, new_session, by = c("id" = "user_id"))
+```
+
 
 ```{r message=FALSE}
-devices %>% filter(Apple != 0) %>% ggplot(aes(x = Apple)) + geom_histogram()
-# devices %>% filter(Apple != 0) %>% ggplot(aes(x = log(Apple))) + geom_histogram()
-devices %>% filter(Apple != 0) %>% ggplot(aes(x = (Apple^(1/3)))) + geom_histogram()
+airbnb_train %>% ggplot(aes(x = Apple)) + geom_histogram()
+airbnb_train %>%  ggplot(aes(x = (Apple^(1/3)))) + geom_histogram()
 
-devices %>% filter(Android != 0) %>% ggplot(aes(x = Android)) + geom_histogram()
-# devices %>% filter(Android != 0) %>% ggplot(aes(x = log(Android))) + geom_histogram()
-devices %>% filter(Android != 0) %>% ggplot(aes(x = (Android^(1/3)))) + geom_histogram()
+airbnb_train %>% ggplot(aes(x = Android)) + geom_histogram()
+# airbnb_train %>% ggplot(aes(x = log(Android))) + geom_histogram()
+airbnb_train %>% ggplot(aes(x = (Android^(1/3)))) + geom_histogram()
 
-devices %>% filter(Windows != 0) %>% ggplot(aes(x = Windows)) + geom_histogram()
-# devices %>% filter(Windows != 0) %>% ggplot(aes(x = log(Windows))) + geom_histogram()
-devices %>% filter(Windows != 0) %>% ggplot(aes(x = (Windows^(1/3)))) + geom_histogram()
+airbnb_train %>% ggplot(aes(x = Windows)) + geom_histogram()
+# airbnb_train %>% ggplot(aes(x = log(Windows))) + geom_histogram()
+airbnb_train %>% ggplot(aes(x = (Windows^(1/3)))) + geom_histogram()
 
-devices %>% filter(Other != 0) %>% ggplot(aes(x = Other)) + geom_histogram()
-devices %>% filter(Other != 0) %>% ggplot(aes(x = log(Other))) + geom_histogram() # bimodal distribution -> binning
-# devices %>% filter(Other != 0) %>% ggplot(aes(x = (Other^(1/3)))) + geom_histogram()
+airbnb_train %>% ggplot(aes(x = Other)) + geom_histogram()
+airbnb_train %>% ggplot(aes(x = log(Other))) + geom_histogram() # bimodal distribution -> binning
+# airbnb_train %>% filter(Other != 0) %>% ggplot(aes(x = (Other^(1/3)))) + geom_histogram()
 
 ```
 
@@ -123,22 +146,25 @@ device_trans <- devices %>% mutate(cbrt_Apple = Apple^ (1/3), cbrt_Android = And
                                    cbrt_Windows = Windows^(1/3)) %>% 
   select(-c(Apple, Android, Windows))
 
-otherBreaks <- c(-1, exp(8.5), max(devices$Other))
+otherBreaks <- c(-1, exp(8.25), max(devices$Other))
 device_trans <- device_trans %>% mutate(OtherCate = cut(Other, otherBreaks)) %>% select(-Other)
+
+# cbrt Breaks
+cbrt_AppleBreaks <- c(0, 
+                      quantile(device_trans$cbrt_Apple[device_trans$cbrt_Apple != 0 ], 0.5),
+                      max(device_trans$cbrt_Apple))
+cbrt_AndroidBreaks <- c(0, 
+                        quantile(device_trans$cbrt_Android[device_trans$cbrt_Android != 0 ], 0.5),
+                        max(device_trans$cbrt_Android))
+cbrt_WindowsBreaks <- c(0, 
+                        quantile(device_trans$cbrt_Windows[device_trans$cbrt_Windows != 0 ], 0.5),
+                        max(device_trans$cbrt_Windows))
+# cbrt Binned
+device_trans <- device_trans %>% mutate(AppleCate = cut(cbrt_Apple, cbrt_AppleBreaks),
+                                        AppleCate = cut(cbrt_Android, cbrt_AndroidBreaks),
+                                        AppleCate = cut(cbrt_Windows, cbrt_WindowsBreaks)) %>% 
+  select(-c(cbrt_Apple, cbrt_Android, cbrt_Windows))
+
 ```
 
-### Join Action & Device
-
-```{r}
-new_session <- full_join(actions, device_trans, by = "user_id")
-write_csv(new_session, paste0(data_path, "cleaned_session.csv"))
-```
-
-
-### Join user_train and 
-```{r}
-# TODO 
-
-
-```
 
