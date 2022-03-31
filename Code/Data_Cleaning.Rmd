@@ -140,15 +140,18 @@ print(category_count(df_cc_imp))
 df_cleaned <- category_comb(df_cc_imp)
 
 
+# further merge categories
+df_cleaned <- category_comb_II(df_cleaned)
+
+
 # re-factor the categories 
 df_cleaned <- df_cleaned %>% 
   mutate_if(is.character, factor) %>% 
   mutate_if(is.factor, factor)
   
 # check the count of each category in each categorical variable again 
-print(category_count(df_cleaned))
+category_count(df_cleaned)
 ```
-
 
 
 ```{r sort desctinations}
@@ -163,11 +166,8 @@ df_cleaned %>%
 ```
 
 
-
-
-
 ```{r}
-write.csv(df_cleaned, paste0(here::here(), '/Data/df_cleaned.csv'))
+write.csv(df_cleaned, paste0(here::here(), '/Data/users_train_cleaned.csv'))
 ```
 
 
