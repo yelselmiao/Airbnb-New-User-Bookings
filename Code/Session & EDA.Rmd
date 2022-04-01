@@ -305,16 +305,18 @@ airbnb_train <- airbnb_cleaned %>% filter(true_age < 95) %>%
 #' Since the Data set is taken from 2015, we decide to change data information to the number of days
 #' away from 2015/01/01
 target_date <- as_datetime("2015/01/01")
-test <- airbnb_train %>% mutate(
+airbnb_train <- airbnb_train %>% mutate(
   date_account_created = target_date - as_datetime(date_account_created),
   date_first_active = target_date - as_datetime(date_first_active))
 
-# Check for transformation in date
+# Check for transformation in date variables
+airbnb_train %>% ggplot(aes(x = date_account_created)) + geom_histogram()
+airbnb_train %>% ggplot(aes(x = date_first_active)) + geom_histogram()
 ```
 
 
 ### Save Data
 ```{r}
-save(new_session, airbnb_train, file = paste0(data_path,"airbnb.RData"))
+save(airbnb_train, file = paste0(data_path,"airbnb.RData"))
 ```
 
