@@ -75,7 +75,7 @@ category_comb_II <- function(df){
            language = ifelse(language == 'en', 'en', 'other'), 
            affiliate_channel = ifelse(affiliate_channel == 'direct','direct', 'nondirect_sem'), 
            affiliate_provider = ifelse(affiliate_provider == 'direct', 'direct', 'nondirect_google'), 
-           first_affiliate_tracked = ifelse(first_affiliate_tracked == 'untracked', 'untracked', 'tracked'), 
+           first_affiliate_tracked = ifelse(first_affiliate_tracked %in% c('untracked', NA), 'untracked', 'tracked'), 
            signup_app = ifelse(signup_app %in% c('Web', 'Moweb'), 'Web', signup_app), 
            first_device_type = case_when(first_device_type %in% c('Android Phone', 'Android Tablet')~'Android', 
                                          first_device_type %in% c('iPad', 'iPhone', 'Mac Desktop')~'Apple', 
@@ -100,7 +100,7 @@ category_count <- function(df){
 # sort out the destination column
 des_sorter <- function(df){
   df_des_sorted <- df %>% 
-    mutate(country_destination = ifelse(country_destination %in% c("NDF", "US"), country_destination, "other"),
+    mutate(country_destination = ifelse(country_destination =="NDF", "NDF", ifelse(country_destination == "US", "US", "other")),
            country_destination = as_factor(country_destination))
   return(df_des_sorted)
 }

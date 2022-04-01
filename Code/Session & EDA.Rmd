@@ -317,6 +317,6 @@ airbnb_train %>% ggplot(aes(x = date_first_active)) + geom_histogram()
 
 ### Save Data
 ```{r}
-save(airbnb_train, file = paste0(data_path,"airbnb.RData"))
+# save(airbnb_train, file = paste0(data_path,"airbnb.RData"))
 ```
 
