@@ -173,13 +173,14 @@ airbnb_train <- inner_join(users_train, new_session, by = c("id" = "user_id"))
 
 ## Airbnb transformation
 ```{r}
-airbnb_train <- airbnb_train %>% mutate(log_age = log(true_age)) %>% 
+airbnb_train <- airbnb_train %>% filter(true_age < 95) %>% 
+  mutate(log_age = log(true_age)) %>% 
   select(-c(X, id, date_first_booking, age, true_age))
 
 ```
 
 ### Save Data
 ```{r}
-save(new_session, airbnb_train, file = paste0(data_path,"airbnb.Rdata"))
+save(new_session, airbnb_train, file = paste0(data_path,"airbnb.RData"))
 ```
 
