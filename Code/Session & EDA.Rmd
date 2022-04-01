@@ -296,10 +296,20 @@ category_count(airbnb_cleaned)
 
 ### True Age filtering
 ```{r}
-airbnb_train <- airbnb_train %>% filter(true_age < 95) %>% 
+# Filter out unreasonable age
+airbnb_train <- airbnb_cleaned %>% filter(true_age < 95) %>% 
   mutate(log_age = log(true_age)) %>% 
-  select(-c(X, id, date_first_booking, age, true_age))
+  select(-c(id, date_first_booking, age, true_age))
 
+#' Date enconding
+#' Since the Data set is taken from 2015, we decide to change data information to the number of days
+#' away from 2015/01/01
+target_date <- as_datetime("2015/01/01")
+test <- airbnb_train %>% mutate(
+  date_account_created = target_date - as_datetime(date_account_created),
+  date_first_active = target_date - as_datetime(date_first_active))
+
+# Check for transformation in date
 ```
 
 
