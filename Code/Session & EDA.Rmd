@@ -22,7 +22,7 @@ suppressPackageStartupMessages(library(ggridges))
 
 ```{r Load Data, message=FALSE, warning=FALSE}
 data_path <- paste0(here::here(), '/Data/')
-users_train <- read.csv(paste0(data_path,"df_cleaned.csv"))
+users_train <- read.csv(paste0(data_path,"users_train_cleaned.csv"))
 # users_train <- read_csv("data/train_users_2.csv")
 age_gender_bkts <- read.csv(paste0(data_path,"age_gender_bkts.csv"))   
 sessions <- read.csv(paste0(data_path,"sessions.csv"), na = c("", "NA"))
@@ -178,6 +178,7 @@ airbnb_train <- airbnb_train %>% filter(true_age < 95) %>%
   select(-c(X, id, date_first_booking, age, true_age))
 
 ```
+
 
 ### Save Data
 ```{r}
