@@ -14,28 +14,33 @@ destination_prop_plot <- function(data){
   
 }
 
-#function that's used to combine categories with extremly small counts 
+# function that's used to combine categories with extremly small counts  (count < 100)
 category_comb <- function(df) {
   cleaned_df <-  df %>%
     mutate(
       signup_flow = ifelse(
-        signup_flow %in% c('0', '1', '2', '3', '12', '23', '24', '25'),
+        signup_flow %in% c('0', '12', '23', '24', '25'),
         signup_flow,
         'other'
       ),
       language = ifelse(
-        language %in% c('de', 'en', 'es', 'it', 'ko', 'ru', 'zh'),
+        language %in% c('de', 'en', 'es', "fr", 'ko', 'zh'),
         language,
         'other'
       ),
       affiliate_provider = ifelse(
         affiliate_provider %in% c(
           'baidu',
+          "craigslist",
           'email-marketing',
+          "facebook-open-graph",
           'gsp',
           'meetup',
           'naver',
+          "padmapper",
           'wayn',
+          "vast",
+          "yahoo",
           'yandex'
         ),
         'other',
@@ -52,7 +57,7 @@ category_comb <- function(df) {
         'Other/Unknown'
       ),
       first_browser = ifelse(
-        first_browser %in% c('Chrome', 'Safari', 'Firefox', NA, 'IE', 'Mobile Safari'),
+        first_browser %in% c('Chrome', 'Safari', 'Firefox', "Chrome Mobile", 'IE', 'Mobile Safari'),
         first_browser,
         'other'
       )
@@ -78,7 +83,7 @@ category_comb_II <- function(df){
                                          first_device_type %in% c('Desktop (Other)', 'Other/Unknown')~'Other/Unknown'), 
            first_browser = case_when(first_browser %in% c('Firefox', 'IE', 'other')~'other', 
                                      first_browser %in% c('Mobile Safari', 'Safari')~'Safari', 
-                                     first_browser == 'Chrome'~'Chrome')
+                                     first_browser  %in% c("Chrome", "Chrome Mobile")~'Chrome')
     )
   return(df_cleaned)
 }
@@ -95,12 +100,8 @@ category_count <- function(df){
 # sort out the destination column
 des_sorter <- function(df){
   df_des_sorted <- df %>% 
-    mutate(NDF = ifelse(country_destination == 'NDF', 1, 0),
-           continent_des = case_when(country_destination %in% c('DE', 'FR', 'GB', 'IT', 'NL', 'PT', 'ES')~'Europe',
-                                     country_destination == 'AU'~'Australia',
-                                     country_destination %in% c('CA', 'US')~'Americas',
-                                     country_destination == 'other' ~ 'other',
-                                     country_destination == 'NDF' ~ 'NDF'))
+    mutate(country_destination = ifelse(country_destination %in% c("NDF", "US"), country_destination, "other"),
+           country_destination = as_factor(country_destination))
   return(df_des_sorted)
 }
 

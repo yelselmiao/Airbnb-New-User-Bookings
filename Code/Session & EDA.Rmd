@@ -17,15 +17,17 @@ https://www.kaggle.com/c/airbnb-recruiting-new-user-bookings/data
 suppressPackageStartupMessages(library(tidyverse))
 suppressPackageStartupMessages(library(ggplot2))
 suppressPackageStartupMessages(library(ggridges))
+suppressPackageStartupMessages(library(lubridate))
+suppressPackageStartupMessages(library(mice))
 ```
 
 
 ```{r Load Data, message=FALSE, warning=FALSE}
 data_path <- paste0(here::here(), '/Data/')
-users_train <- read.csv(paste0(data_path,"users_train_cleaned.csv"))
-# users_train <- read_csv("data/train_users_2.csv")
+# users_train <- read.csv(paste0(data_path,"users_train_cleaned.csv"))
+users_train <- read_csv(paste0(data_path,"train_users_2.csv"), na = c("", "-unknown-"))
 age_gender_bkts <- read.csv(paste0(data_path,"age_gender_bkts.csv"))   
-sessions <- read.csv(paste0(data_path,"sessions.csv"), na = c("", "NA"))
+sessions <- read.csv(paste0(data_path,"sessions.csv"))
 countries <- read.csv(paste0(data_path,"countries.csv"))
 ```
 
@@ -172,6 +174,127 @@ airbnb_train <- inner_join(users_train, new_session, by = c("id" = "user_id"))
 
 
 ## Airbnb transformation
+
+### Missing Value Handling
+
+Varaibles in `airbnb_train`: 
+- id: user id  
+- date_account_created: the date of account creation  
+- timestamp_first_active: timestamp of the first activity, note that it can be earlier than  
+(date_account_created or date_first_booking because a user can search before signing up)
+- date_first_booking: date of first booking  
+- gender  
+- age  
+- signup_method  
+- signup_flow: the page a user came to signup up from  
+- language: international language preference  
+- affiliate_channel: what kind of paid marketing  
+- affiliate_provider: where the marketing is e.g. google, craigslist, other  
+- first_affiliate_tracked: whats the first marketing the user interacted with before the signing up  
+- signup_app  
+- first_device_type  
+- first_browser  
+- country_destination: response var  
+
+```{r}
+source("helper_function.R")
+######################################################## Age 88,898 missing vale (41.6%)
+
+# Age abnormal case 1: the data is collected in 2015, accrording to the Airbnb term of use, the minimum age required for account creation is 18, so I assume ages < 18 are faulty inputs
+
+# Age abnormal case 2: similarily, for those who wrong entered year as age, if it's greater than 2015-18 = 1997, it;s faulty (750 rows)
+
+# convert these problematic age entries as NA
+airbnb_train$age[airbnb_train$age < 18 | airbnb_train$age > 1997] <- NA
+
+# convert problematic year entry to age
+airbnb_train <- airbnb_train %>% 
+  mutate(true_age = ifelse(age > 1000, 2015 - age, age))
+  
+######################################################## Gender (95688 missing value) - (44.8%)
+nrow(airbnb_train %>% 
+  filter(is.na(gender))) 
+
+
+# since it's far beyond acceptable proportion of missing value in terms of age and gender, I think a complete case analysis is perhaps more reasonable than imputed data analysis (will verify)
+airbnb_train_cc <- airbnb_train %>% 
+  filter(!is.na(gender) & !is.na(age))
+```
+
+```{r visualize missingness in gender and age, fig.width=8, fig.height=3}
+destination_prop_plot(airbnb_train_cc)
+destination_prop_plot(airbnb_train)
+
+airbnb_miss <- airbnb_train %>% 
+  mutate(miss = ifelse(!is.na(gender) & !is.na(age), 0, 1),
+         miss = as.factor(miss)) 
+
+chisq.test(airbnb_miss$miss, airbnb_miss$country_destination)
+```
+```{r check data missing for other char columns}
+map(airbnb_train, ~sum(is.na(.))/nrow(airbnb_train))
+map(airbnb_train_cc, ~sum(is.na(.))/nrow(airbnb_train_cc))
+
+
+# date_first_booking: 124543 (47.9%) 
+# consider drop this column 
+
+# first_affiliate_tracked: 6065 (1.6%)
+# impute it in next chunk 
+
+
+# first_browser: 27266 (9.8%)
+# treat missingness as a separate category 
+```
+
+```{r impute first_affiliate_tracked, echo = TRUE}
+airbnb_cc_init <- mice(airbnb_train_cc, maxit = 0)
+meth <- airbnb_cc_init$meth
+meth[!names(meth) %in% c("first_affiliate_tracked")] <- ""
+airbnb_cc_imp_5 <- mice(airbnb_train_cc, meth = meth, seed = 1234, m = 5)
+airbnb_cc_imp <- complete(airbnb_cc_imp_5)
+```
+
+```{r convert data col & convert char to factor, warning = FALSE}
+airbnb_cc_imp <- airbnb_cc_imp %>%
+  mutate(
+    date_first_active = as.Date(ymd_hms(timestamp_first_active),'%Y-%m-%d'),
+    date_account_created = as.Date(date_account_created, '%Y-%m-%d'),
+    date_first_booking = as.Date(date_first_booking, '%Y-%m-%d')
+  ) %>% 
+  relocate(date_first_active, .before = date_first_booking) %>%
+  select(-timestamp_first_active) 
+```
+
+
+```{r check factor cols (contingency table)}
+# contingency table of each factor column
+# print(category_count(airbnb_cc_imp))
+
+# combine categories with extremely small counts 
+airbnb_cleaned <- category_comb(airbnb_cc_imp)
+
+# contingency table of each factor column
+# print(category_count(airbnb_cleaned))
+
+# further merge categories
+airbnb_cleaned <- category_comb_II(airbnb_cleaned)
+
+
+# re-factor the categories 
+airbnb_cleaned <- airbnb_cleaned %>% 
+  mutate_if(is.character, factor) %>% 
+  mutate_if(is.factor, factor)
+
+# sort the desctinations
+airbnb_cleaned <- des_sorter(airbnb_cleaned)
+  
+# check the count of each category in each categorical variable again 
+category_count(airbnb_cleaned)
+```
+
+
+### True Age filtering
 ```{r}
 airbnb_train <- airbnb_train %>% filter(true_age < 95) %>% 
   mutate(log_age = log(true_age)) %>% 
