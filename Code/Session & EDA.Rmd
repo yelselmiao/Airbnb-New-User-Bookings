@@ -314,9 +314,17 @@ airbnb_train %>% ggplot(aes(x = date_account_created)) + geom_histogram()
 airbnb_train %>% ggplot(aes(x = date_first_active)) + geom_histogram()
 ```
 
+### Data Split
+```{r}
+load(paste0(here::here(), "/Data/airbnb.RData"))
+set.seed(2023)
+
+library(caret)
+folds <- createFolds((airbnb_train %>% lapply(as.factor))$country_destination, k = 5)
+```
+
 
 ### Save Data
 ```{r}
-# save(airbnb_train, file = paste0(data_path,"airbnb.RData"))
+save(airbnb_train, folds, file = paste0(here::here(),"/Data/","airbnb.RData"))
 ```
-

@@ -123,6 +123,28 @@ data_set_up <- function(loaded_data){
 `%notin%` <- Negate(`%in%`)
 
 
+# ________________________ Folds ________________________
 
+#' Fold Operation Function
+#' Either extract the data frame for the kth fold (test = FALSE)
+#' or extract a named list with both the training set and the testing set (test = TRUE), 
+#' with the testing being the target fold
+#'
+#' @param df airbnb_train, the cleaned data
+#' @param target_fold integer, the fold we want to extract
+#' @param fold_idx list, a list of index for each fold, an example should be the outcome of createFolds form caret Package
+#' @param k the number of folds we have, DEFAULT = 5
+#' @param test wheter to only extract a dataframe or to extract the full testing and training data set as a named list
+#'
+#' @return if(test) -> list, else (dataframe)
+#'
+#' @examples extract_folds(airbnb_train, 1, folds)
+extract_folds <- function(df, target_fold, fold_idx, k = 5, test = FALSE) {
+  if (length(fold_idx) < k){stop("The length of fold index list does not match the number of folds. \n Default k is 5")}
+  test_set <- df[fold_idx[[target_fold]], ]
+  if(!test){return(test_set)}
+  train_set <- df[unlist(fold_idx[-target_fold]), ]
+  return(list(train = train_set, test = test_set))
+}
 
 
