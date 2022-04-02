@@ -48,5 +48,13 @@ best.m <- mtry[mtry[, 2] == min(mtry[, 2]), 1]
 ```
 ```{r}
 rf <- randomForest(country_destination ~., data = train, importance=TRUE, ntree = 500, mtry = best.m)
+rf_pred <- predict(rf,type = "prob", newdata = test)
+pred_interval <- CategoryPredInterval(rf_pred, test$country_destination %>% levels())
+# table(test$country_destination, pred_interval$pred50)
+# table(test$country_destination, pred_interval$pred80)
+mis_class <- lapply(pred_interval, get_misclass_rate, actual = test$country_destination)
+
+
+
 ```
 
