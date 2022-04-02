@@ -1,0 +1,131 @@
+---
+title: "Modeling - Naive Bayes"
+output: github_document  
+author: Shuyi Tan
+editor_options: 
+  chunk_output_type: inline
+---
+
+
+```{r Set up Package}
+suppressPackageStartupMessages(library(tidyverse))
+suppressForeignCheck(library(e1071))
+suppressPackageStartupMessages(library(caret))
+```
+
+
+```{r Source wrapper function}
+source(paste0(here::here(), '/Code/helper_function.R'))
+source(paste0(here::here(), '/Code/modeling_function.R'))
+```
+
+
+```{r Load Data}
+# Load the dataset
+load("~/Desktop/Academic/STAT447/Airbnb-New-User-Bookings/Data/airbnb.Rdata")
+
+# rename the dataset to avoid misunderstanding 
+airbnb_data <- airbnb_train
+
+# move the response variale to the last position for convenience
+airbnb_data <-
+  airbnb_data %>% relocate(country_destination, .after = 'log_age')
+```
+
+
+# Naive Bayes Model 
+
+## Fit full model 
+```{r Full Model}
+res_full <- NB_fitting(airbnb_data)
+res_full
+```
+
+
+## Remove four variables with high correlation 
+By some literature searching, we found that there are two sets of variables that may be highly correlated. The first set is   
+* signup_app  
+* signup_flow  
+* signup_method  
+
+
+and the second set is  
+* first_affiliate_tracked  
+* affiliate_channel  
+* affiliate_provider  
+
+Ref: https://www.analyticsvidhya.com/blog/2021/06/decoding-the-chi-square-test%E2%80%8A-%E2%80%8Ause-along-with-implementation-and-visualization/#:~:text=Chi%2DSquare%20test%20is%20a,categorical%20variables%20in%20our%20data.
+
+```{r Check Correlation of signup-related variables}
+chisq.test(airbnb_data$signup_app, airbnb_data$signup_flow)
+chisq.test(airbnb_data$signup_app, airbnb_data$signup_method)
+chisq.test(airbnb_data$signup_flow, airbnb_data$signup_method)
+```
+
+```{r Check Correlation of signup-related variables}
+chisq.test(airbnb_data$first_affiliate_tracked, airbnb_data$affiliate_channel)
+chisq.test(airbnb_data$first_affiliate_tracked, airbnb_data$affiliate_provider)
+chisq.test(airbnb_data$affiliate_channel, airbnb_data$affiliate_provider)
+```
+
+Therefore we will drop the following variables:  
+* signup_app  
+* signup_flow  
+* affiliate_channel  
+* affiliate_provider  
+
+and re-fit the Naive Bayes classifier. The results are as shown below:  
+
+```{r Fit Model on a subset of predictors}
+airbnb_data_sub <- airbnb_data %>% 
+  select(-c(signup_app, signup_flow, affiliate_channel, affiliate_provider))
+
+res_sub <- NB_fitting(airbnb_data_sub)
+res_sub
+```
+
+## Further tackled imbalanced classification 
+Either in each fold or the whole dataset, the proportion of categories in the response vairable is: 
+* `other`: 15%  
+* `US`: 37%  
+* `NDF`:  48%  
+
+```{r}
+# check the imbalance in the repsonse variable
+
+# the whole dataset
+destination_prop_tb(airbnb_data_sub)
+# each fold
+for (i in 1:5) {
+  fold = extract_folds(airbnb_data_sub, i, folds)
+  print(destination_prop_tb(fold))
+}
+```
+
+Ref:  
+1. https://kiwidamien.github.io/how-to-do-cross-validation-when-upsampling-data.html  
+2. https://www.analyticsvidhya.com/blog/2016/03/practical-guide-deal-imbalanced-classification-problems/   
+3. https://www.baeldung.com/cs/naive-bayes-classification-performance
+
+
+```{r}
+res_sub_resample <- NB_fitting_sampling(airbnb_data_sub)
+res_sub_resample
+```
+
+```{r Print the results of full model, sub model and resampled model}
+res_summary <- cbind(
+  res_full %>%
+    rename('full_50' = `50% PI`,
+           'full_80' = `80% PI`,),
+  
+  res_sub %>%
+    rename('sub_50' = `50% PI`,
+           'sub_80' = `80% PI`,),
+  
+  res_sub_resample
+)
+res_summary
+```
+
+
