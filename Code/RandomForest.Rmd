@@ -10,13 +10,43 @@ set.seed(2023)
 library(purrr)
 library(tidyverse)
 library(caret)
+library(randomForest)
 ```
 
 # Feature Selection
+```{r}
+# Tunning mtry
+mtry <- tuneRF(airbnb_train %>% select(-country_destination) , airbnb_train$country_destination, ntreeTry=500,
+               stepFactor=1.5,improve=0.01, trace=TRUE, plot=TRUE)
+best.m <- mtry[mtry[, 2] == min(mtry[, 2]), 1]
+print(mtry)
+print(best.m)
 
-```{r Check Idenpendence}
-featurePlot(x = airbnb_train[, c(1,2,20)], y = airbnb_train$country_destination, 
-            plot = "box", auto.key = list(colums = 3))
+rf <- randomForest(country_destination ~., data = airbnb_train, importance=TRUE, ntree = 500, mtry = best.m)
+varImpPlot(rf)
+rf
 ```
 
+
+
+# Random Forest
+
+```{r}
+# Subset the for model code, choest testing the the first fold
+subst_list <- extract_folds(airbnb_train, 1, folds, test = TRUE)
+train <- subst_list$train
+test <- subst_list$test
+rm(subst_list)
+```
+
+```{r}
+# Tunning mtry
+mtry <- tuneRF(train %>% select(-country_destination) , train$country_destination, ntreeTry=500,
+               stepFactor=1.5,improve=0.01, trace=TRUE, plot=TRUE)
+best.m <- mtry[mtry[, 2] == min(mtry[, 2]), 1]
+
+```
+```{r}
+rf <- randomForest(country_destination ~., data = train, importance=TRUE, ntree = 500, mtry = best.m)
+```
 
