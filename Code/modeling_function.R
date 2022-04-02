@@ -40,8 +40,11 @@ NB_fitting <- function(data) {
 }   
  
 
-
-
+#' Function of fitting naive bayes with resampling and oversampling method 
+#' @param data the input dataset 
+#' @return a dataframe with the misclassification rate of oversampled model and undersmapled model based
+#' on 50% and 80% prediction interval
+#' @example NB_fitting_sampling(airbnb_sub)
 
 NB_fitting_sampling <- function(data) {
   
