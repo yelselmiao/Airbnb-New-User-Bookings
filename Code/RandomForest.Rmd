@@ -33,11 +33,15 @@ rf
 
 ```{r}
 # Subset the for model code, choest testing the the first fold
+airbnb_data_sub <- airbnb_train %>% 
+  select(-c(signup_app, signup_flow, affiliate_channel, first_affiliate_tracked))
+
 subst_list <- extract_folds(airbnb_train, 1, folds, test = TRUE)
 train <- subst_list$train
 test <- subst_list$test
 rm(subst_list)
 ```
+
 
 ```{r}
 # Tunning mtry
@@ -46,8 +50,13 @@ mtry <- tuneRF(train %>% select(-country_destination) , train$country_destinatio
 best.m <- mtry[mtry[, 2] == min(mtry[, 2]), 1]
 
 ```
+
 ```{r}
-rf <- randomForest(country_destination ~., data = train, importance=TRUE, ntree = 500, mtry = best.m)
+samplesize <- (((train %>% group_by(country_destination) %>% tally())$n)/3 * 2) %>% round()
+samplesize <-  rep(samplesize[1],3)
+names(samplesize) <- c("other", "US", "NDF")
+rf <- randomForest(country_destination ~., data = train, importance=TRUE, ntree = 500, mtry = best.m,
+                   strata =train$country_destination, samplesize = samplesize)
 rf_pred <- predict(rf,type = "prob", newdata = test)
 pred_interval <- CategoryPredInterval(rf_pred, test$country_destination %>% levels())
 # table(test$country_destination, pred_interval$pred50)
@@ -57,13 +66,18 @@ mis_class <- lapply(pred_interval, get_misclass_rate, actual = test$country_dest
 ```
 
 ```{r}
-randomforest_model <- function(training, holdout) {
+randomforest_model <- function(training, holdout, samplesize) {
   # Tunning mtry
   mtry <- tuneRF(training %>% select(-country_destination) , training$country_destination, ntreeTry=500,
                  stepFactor=1.5,improve=0.01, trace=TRUE, plot=TRUE)
   best.m <- mtry[mtry[, 2] == min(mtry[, 2]), 1]
   # Fit Model & Make Prediction
-  rf <- randomForest(country_destination ~., data = training, importance=TRUE, ntree = 500, mtry = best.m)
+  # rf <- randomForest(country_destination ~., data = training, importance=TRUE, ntree = 500, mtry = best.m)
+  samplesize <- (((training %>% group_by(country_destination) %>% tally())$n)/3 * 2) %>% round()
+  samplesize <-  rep(samplesize[1],3)
+  names(samplesize) <- c("other", "US", "NDF")
+  rf <- randomForest(country_destination ~., data = training, importance=TRUE, ntree = 500, mtry = best.m,
+                     strata =train$country_destination, samplesize = samplesize)
   rf_pred <- predict(rf,type = "prob", newdata = holdout)
   # Extract Prediction Interval, misclassification rate, AUC
   pred_interval <- CategoryPredInterval(rf_pred, holdout$country_destination %>% levels())
@@ -71,7 +85,7 @@ randomforest_model <- function(training, holdout) {
   # table(holdout$country_destination, pred_interval$pred80)
   mis_class <- lapply(pred_interval, get_misclass_rate, actual = holdout$country_destination)
   
-  return(list(model = rf), pred = rf_pred, pred_interval = pred_interval, mis_class = mis_class)
+  return(list(model = rf, pred = rf_pred, pred_interval = pred_interval, mis_class = mis_class))
 }
 
 
@@ -79,11 +93,40 @@ randomforest_model <- function(training, holdout) {
 
 
 ```{r}
-lapply(as.list(1:5), function(t){
+rf_under_full_result <- lapply(as.list(1:5), function(t){
   subst_list <- extract_folds(airbnb_train, t, folds, test = TRUE)
   train <- subst_list$train
   test <- subst_list$test
   return(randomforest_model(train, test))
 })
+```
+
+```{r}
+names(rf_full_result) <- lapply(as.list(1:5), function(t){paste0("fold", as.character(t))}) %>% unlist()
+sapply(rf_full_result, "[", "mis_class")
+```
+
+```{r}
+rf_sub_result <- lapply(as.list(1:5), function(t){
+  subst_list <- extract_folds(airbnb_data_sub, t, folds, test = TRUE)
+  train <- subst_list$train
+  test <- subst_list$test
+  return(randomforest_model(train, test))
+})
+```
+```{r}
+names(rf_sub_result) <- lapply(as.list(1:5), function(t){paste0("fold", as.character(t))}) %>% unlist()
+sapply(rf_sub_result, "[", "mis_class")
+```
+
+```{r}
+mis_class_sub <- sapply(rf_sub_result, "[", "mis_class")
+mis_class_ful <- sapply(rf_full_result, "[", "mis_class")
+
+rf_misclass <- data.frame(full_50 = sapply(mis_class_ful, "[", "pred50") %>% unlist(),
+                          sub_50 = sapply(mis_class_sub, "[", "pred50") %>% unlist(),
+                          full_80 = sapply(mis_class_ful, "[", "pred80") %>% unlist(),
+                          sub_80 = sapply(mis_class_sub, "[", "pred80") %>% unlist())
+rownames(rf_misclass) <- c("Fold1", "Fold2", "Fold3", "Fold4", "Fold5")
 ```
 
