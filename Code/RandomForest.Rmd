@@ -141,3 +141,7 @@ save(rf_full_result, rf_sub_result, rf_under_full_result, rf_misclass,
      file = paste0(here::here(), "/Data/rf_model_results.RData"))
 ```
 
+```{r}
+save(rf_misclass, file = paste0(here::here(), "/Data/rf_results.RData"))
+```
+
