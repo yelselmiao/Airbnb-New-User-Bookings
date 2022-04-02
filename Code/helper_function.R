@@ -14,28 +14,33 @@ destination_prop_plot <- function(data){
   
 }
 
-#function that's used to combine categories with extremly small counts 
+# function that's used to combine categories with extremly small counts  (count < 100)
 category_comb <- function(df) {
   cleaned_df <-  df %>%
     mutate(
       signup_flow = ifelse(
-        signup_flow %in% c('0', '1', '2', '3', '12', '23', '24', '25'),
+        signup_flow %in% c('0', '12', '23', '24', '25'),
         signup_flow,
         'other'
       ),
       language = ifelse(
-        language %in% c('de', 'en', 'es', 'it', 'ko', 'ru', 'zh'),
+        language %in% c('de', 'en', 'es', "fr", 'ko', 'zh'),
         language,
         'other'
       ),
       affiliate_provider = ifelse(
         affiliate_provider %in% c(
           'baidu',
+          "craigslist",
           'email-marketing',
+          "facebook-open-graph",
           'gsp',
           'meetup',
           'naver',
+          "padmapper",
           'wayn',
+          "vast",
+          "yahoo",
           'yandex'
         ),
         'other',
@@ -52,7 +57,7 @@ category_comb <- function(df) {
         'Other/Unknown'
       ),
       first_browser = ifelse(
-        first_browser %in% c('Chrome', 'Safari', 'Firefox', NA, 'IE', 'Mobile Safari'),
+        first_browser %in% c('Chrome', 'Safari', 'Firefox', "Chrome Mobile", 'IE', 'Mobile Safari'),
         first_browser,
         'other'
       )
@@ -70,7 +75,7 @@ category_comb_II <- function(df){
            language = ifelse(language == 'en', 'en', 'other'), 
            affiliate_channel = ifelse(affiliate_channel == 'direct','direct', 'nondirect_sem'), 
            affiliate_provider = ifelse(affiliate_provider == 'direct', 'direct', 'nondirect_google'), 
-           first_affiliate_tracked = ifelse(first_affiliate_tracked == 'untracked', 'untracked', 'tracked'), 
+           first_affiliate_tracked = ifelse(first_affiliate_tracked %in% c('untracked', NA), 'untracked', 'tracked'), 
            signup_app = ifelse(signup_app %in% c('Web', 'Moweb'), 'Web', signup_app), 
            first_device_type = case_when(first_device_type %in% c('Android Phone', 'Android Tablet')~'Android', 
                                          first_device_type %in% c('iPad', 'iPhone', 'Mac Desktop')~'Apple', 
@@ -78,7 +83,7 @@ category_comb_II <- function(df){
                                          first_device_type %in% c('Desktop (Other)', 'Other/Unknown')~'Other/Unknown'), 
            first_browser = case_when(first_browser %in% c('Firefox', 'IE', 'other')~'other', 
                                      first_browser %in% c('Mobile Safari', 'Safari')~'Safari', 
-                                     first_browser == 'Chrome'~'Chrome')
+                                     first_browser  %in% c("Chrome", "Chrome Mobile")~'Chrome')
     )
   return(df_cleaned)
 }
@@ -95,12 +100,8 @@ category_count <- function(df){
 # sort out the destination column
 des_sorter <- function(df){
   df_des_sorted <- df %>% 
-    mutate(NDF = ifelse(country_destination == 'NDF', 1, 0),
-           continent_des = case_when(country_destination %in% c('DE', 'FR', 'GB', 'IT', 'NL', 'PT', 'ES')~'Europe',
-                                     country_destination == 'AU'~'Australia',
-                                     country_destination %in% c('CA', 'US')~'Americas',
-                                     country_destination == 'other' ~ 'other',
-                                     country_destination == 'NDF' ~ 'NDF'))
+    mutate(country_destination = ifelse(country_destination =="NDF", "NDF", ifelse(country_destination == "US", "US", "other")),
+           country_destination = as_factor(country_destination))
   return(df_des_sorted)
 }
 
@@ -122,6 +123,28 @@ data_set_up <- function(loaded_data){
 `%notin%` <- Negate(`%in%`)
 
 
+# ________________________ Folds ________________________
 
+#' Fold Operation Function
+#' Either extract the data frame for the kth fold (test = FALSE)
+#' or extract a named list with both the training set and the testing set (test = TRUE), 
+#' with the testing being the target fold
+#'
+#' @param df airbnb_train, the cleaned data
+#' @param target_fold integer, the fold we want to extract
+#' @param fold_idx list, a list of index for each fold, an example should be the outcome of createFolds form caret Package
+#' @param k the number of folds we have, DEFAULT = 5
+#' @param test wheter to only extract a dataframe or to extract the full testing and training data set as a named list
+#'
+#' @return if(test) -> list, else (dataframe)
+#'
+#' @examples extract_folds(airbnb_train, 1, folds)
+extract_folds <- function(df, target_fold, fold_idx, k = 5, test = FALSE) {
+  if (length(fold_idx) < k){stop("The length of fold index list does not match the number of folds. \n Default k is 5")}
+  test_set <- df[fold_idx[[target_fold]], ]
+  if(!test){return(test_set)}
+  train_set <- df[unlist(fold_idx[-target_fold]), ]
+  return(list(train = train_set, test = test_set))
+}
 
 
