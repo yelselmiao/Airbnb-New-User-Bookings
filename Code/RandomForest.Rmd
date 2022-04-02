@@ -74,7 +74,7 @@ randomforest_model <- function(training, holdout, samplesize) {
   # Fit Model & Make Prediction
   # rf <- randomForest(country_destination ~., data = training, importance=TRUE, ntree = 500, mtry = best.m)
   samplesize <- (((training %>% group_by(country_destination) %>% tally())$n)/3 * 2) %>% round()
-  samplesize <-  rep(samplesize[1],3)
+  samplesize <-  rep(samplesize[3],3) # 1 for undersapling, 3 for upper sampling
   names(samplesize) <- c("other", "US", "NDF")
   rf <- randomForest(country_destination ~., data = training, importance=TRUE, ntree = 500, mtry = best.m,
                      strata =train$country_destination, samplesize = samplesize)
@@ -102,8 +102,8 @@ rf_under_full_result <- lapply(as.list(1:5), function(t){
 ```
 
 ```{r}
-names(rf_full_result) <- lapply(as.list(1:5), function(t){paste0("fold", as.character(t))}) %>% unlist()
-sapply(rf_full_result, "[", "mis_class")
+names(rf_under_full_result) <- lapply(as.list(1:5), function(t){paste0("fold", as.character(t))}) %>% unlist()
+sapply(rf_under_full_result, "[", "mis_class")
 ```
 
 ```{r}
@@ -122,11 +122,22 @@ sapply(rf_sub_result, "[", "mis_class")
 ```{r}
 mis_class_sub <- sapply(rf_sub_result, "[", "mis_class")
 mis_class_ful <- sapply(rf_full_result, "[", "mis_class")
+mis_class_ful_under <- sapply(rf_under_full_result, "[", "mis_class")
 
 rf_misclass <- data.frame(full_50 = sapply(mis_class_ful, "[", "pred50") %>% unlist(),
                           sub_50 = sapply(mis_class_sub, "[", "pred50") %>% unlist(),
+                          under_50 = sapply(mis_class_ful_under, "[", "pred50") %>% unlist(),
                           full_80 = sapply(mis_class_ful, "[", "pred80") %>% unlist(),
-                          sub_80 = sapply(mis_class_sub, "[", "pred80") %>% unlist())
+                          sub_80 = sapply(mis_class_sub, "[", "pred80") %>% unlist(),
+                          under_80 = sapply(mis_class_ful_under, "[", "pred80") %>% unlist())
 rownames(rf_misclass) <- c("Fold1", "Fold2", "Fold3", "Fold4", "Fold5")
+
+rf_misclass["avg",] <- colMeans(rf_misclass)
+```
+
+## Save rf_model_realvant info
+```{r}
+save(rf_full_result, rf_sub_result, rf_under_full_result, rf_misclass,
+     file = paste0(here::here(), "/Data/rf_model_results.RData"))
 ```
 
