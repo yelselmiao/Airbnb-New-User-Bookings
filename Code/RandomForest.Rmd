@@ -1,0 +1,22 @@
+---
+title: "RandomForest"
+---
+# Load Data and Library
+```{r Load Data}
+load(paste0(here::here(), "/Data/airbnb.RData"))
+source("helper_function.R")
+set.seed(2023)
+
+library(purrr)
+library(tidyverse)
+library(caret)
+```
+
+# Feature Selection
+
+```{r Check Idenpendence}
+featurePlot(x = airbnb_train[, c(1,2,20)], y = airbnb_train$country_destination, 
+            plot = "box", auto.key = list(colums = 3))
+```
+
+
