@@ -35,7 +35,8 @@ rf
 ```{r}
 # Subset the for model code, choest testing the the first fold
 airbnb_data_sub <- airbnb_train %>% 
-  select(-c(signup_app, signup_flow, affiliate_channel, first_affiliate_tracked))
+  select(signup_method, log_unique_actionTrp, date_account_created, log_total_action, date_first_active, AppleCate, first_browser, OtherCate,
+         country_destination)
 
 subst_list <- extract_folds(airbnb_train, 1, folds, test = TRUE)
 train <- subst_list$train
