@@ -16,7 +16,7 @@ randomforest_model <- function(training, holdout) {
   # Fit Model & Make Prediction
   # rf <- randomForest(country_destination ~., data = training, importance=TRUE, ntree = 500, mtry = best.m)
   samplesize <- (((training %>% group_by(country_destination) %>% tally())$n)/3 * 2) %>% round()
-  samplesize <-  rep(samplesize[3],3) # 1 for undersapling, 3 for upper sampling
+  samplesize <-  rep(samplesize[1],3) # 1 for undersapling, 3 for over sampling
   names(samplesize) <- c("other", "US", "NDF")
   rf <- randomForest(country_destination ~., data = training, importance=TRUE, ntree = 500, mtry = best.m,
                      strata =train$country_destination, samplesize = samplesize)
