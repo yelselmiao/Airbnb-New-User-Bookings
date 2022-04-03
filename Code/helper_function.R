@@ -199,6 +199,17 @@ get_misclass_rate <- function(actual, pred) {
   return((all_obs - crt_class)/all_obs)
 }
 
+#' check the proportion of each category in the response variable 
+#' @param date the dataset that you would like to check 
+#' @return a dataframe demonstrating the count and proportion of each category in the response variable 
+#' @example destination_prop_tb(airbnb_data)
+destination_prop_tb <- function(data) {
+  data %>%
+    group_by(country_destination) %>%
+    tally() %>%
+    mutate(prop = scales::percent(n / sum(n)))
+}
+
 
 # Cite: LetterRecog-multLogit.pdf
 #' @description
