@@ -109,8 +109,8 @@ rfe_rf_procedure <- function(data){
                            method = "repeatedcv", # repeated cv
                            repeats = 1,  
                            number = 3) 
-  result_rfe = rfe(x = X_train_sub, 
-                   y = y_train_sub, 
+  result_rfe = rfe(x = X_train, 
+                   y = y_train, 
                    sizes = c(5:15),
                    rfeControl = control_rfe)
   return(result_rfe)
