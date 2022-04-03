@@ -25,12 +25,12 @@ NB_fitting <- function(data) {
       get_misclass_rate(holdout$country_destination, oos_pred_label$pred50)
     oos_80_misclass <-
       get_misclass_rate(holdout$country_destination, oos_pred_label$pred80)
-    mis_res_mat[i,1] <- round(oos_50_misclass, 2)
-    mis_res_mat[i,2] <- round(oos_80_misclass,2) 
+    mis_res_mat[i,1] <- round(oos_50_misclass, 3)
+    mis_res_mat[i,2] <- round(oos_80_misclass,3) 
   }
   
-  mis_res_mat[6, 1] <- round(mean(mis_res_mat[1:5, 1]),2)
-  mis_res_mat[6, 2] <- round(mean(mis_res_mat[1:5, 2]),2)
+  mis_res_mat[6, 1] <- round(mean(mis_res_mat[1:5, 1]),3)
+  mis_res_mat[6, 2] <- round(mean(mis_res_mat[1:5, 2]),3)
   
   mis_res_df <- as.data.frame(mis_res_mat)
   rownames(mis_res_df) <- c('Fold 1', 'Fold 2', 'Fold 3','Fold 4','Fold 5','Avg')
@@ -67,8 +67,8 @@ NB_fitting_sampling <- function(data) {
     oos_80_misclass_upsample <-
       get_misclass_rate(holdout$country_destination, oos_pred_label_upsample$pred80)
     
-    mis_res_mat[i,1] <- round(oos_50_misclass_upsample, 2)
-    mis_res_mat[i,2] <- round(oos_80_misclass_upsample,2)     
+    mis_res_mat[i,1] <- round(oos_50_misclass_upsample, 3)
+    mis_res_mat[i,2] <- round(oos_80_misclass_upsample,3)     
     
     # down sampling 
     train_downsample <- downSample(x = train[, -16],
@@ -84,13 +84,13 @@ NB_fitting_sampling <- function(data) {
       get_misclass_rate(holdout$country_destination, oos_pred_label_downsample$pred80)
     
     
-    mis_res_mat[i,3] <- round(oos_50_misclass_downsample, 2)
-    mis_res_mat[i,4] <- round(oos_80_misclass_downsample,2) 
+    mis_res_mat[i,3] <- round(oos_50_misclass_downsample, 3)
+    mis_res_mat[i,4] <- round(oos_80_misclass_downsample,3) 
   }
   
   # calculate the avg miclass-rate
   for (j in 1:4){
-    mis_res_mat[6, j] <- round(mean(mis_res_mat[1:5, j]),2)
+    mis_res_mat[6, j] <- round(mean(mis_res_mat[1:5, j]),3)
   }
   mis_res_df <- as.data.frame(mis_res_mat)
   rownames(mis_res_df) <- c('Fold 1', 'Fold 2', 'Fold 3','Fold 4','Fold 5','Avg')
@@ -98,3 +98,23 @@ NB_fitting_sampling <- function(data) {
   
   return(mis_res_df)
 }   
+
+
+
+
+rfe_rf_procedure <- function(data){
+  X_train <- data[, -16]
+  y_train <- data[, 16]
+  control_rfe = rfeControl(functions = rfFuncs, # random forest
+                           method = "repeatedcv", # repeated cv
+                           repeats = 1,  
+                           number = 3) 
+  result_rfe = rfe(x = X_train, 
+                   y = y_train, 
+                   sizes = c(5:15),
+                   rfeControl = control_rfe)
+  return(result_rfe)
+}
+
+
+
