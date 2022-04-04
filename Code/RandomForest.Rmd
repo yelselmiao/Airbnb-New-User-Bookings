@@ -85,20 +85,26 @@ sapply(rf_under_full_result, "[", "mis_class")
 ```
 
 ```{r}
-rf_sub_result <- lapply(as.list(1:5), function(t){
-  subst_list <- extract_folds(airbnb_data_sub, t, folds, test = TRUE)
-  train <- subst_list$train
-  test <- subst_list$test
-  return(randomforest_model(train, test))
-})
+# rf_sub_result <- lapply(as.list(1:5), function(t){
+#   subst_list <- extract_folds(airbnb_data_sub, t, folds, test = TRUE)
+#   train <- subst_list$train
+#   test <- subst_list$test 
+#   return(randomforest_model(train, test))
+# })
+
+rf_sub_result <- rf_5fold_cross(airbnb_train, folds, type ="sub")
+rf_over_full_result <- rf_5fold_cross(airbnb_train, folds, type ="over")
 ```
+
 ```{r}
 names(rf_sub_result) <- lapply(as.list(1:5), function(t){paste0("fold", as.character(t))}) %>% unlist()
 sapply(rf_sub_result, "[", "mis_class")
 ```
 
+
+
 ```{r}
-load(paste0(here::here(), "/Data/rf_model_results.RData"))
+# load(paste0(here::here(), "/Data/rf_model_results.RData"))
 mis_class_sub <- sapply(rf_sub_result, "[", "mis_class")
 mis_class_ful <- sapply(rf_full_result, "[", "mis_class")
 mis_class_ful_under <- sapply(rf_under_full_result, "[", "mis_class")
@@ -120,7 +126,7 @@ rf_misclass["avg",] <- colMeans(rf_misclass)
 
 ## Save rf_model_realvant info
 ```{r}
-save(rf_full_result, rf_sub_result, rf_under_full_result, mis_class_ful_over,
+save(rf_full_result, rf_sub_result, rf_under_full_result, rf_over_full_result,
      file = paste0(here::here(), "/Data/rf_model_results.RData"))
 ```
 
