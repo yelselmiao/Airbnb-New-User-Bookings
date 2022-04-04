@@ -85,11 +85,11 @@ sapply(rf_under_full_result, "[", "mis_class")
 ```
 
 ```{r}
-# rf_sub_result <- lapply(as.list(1:5), function(t){
+# rf_sub_under_result <- lapply(as.list(1:4), function(t){
 #   subst_list <- extract_folds(airbnb_data_sub, t, folds, test = TRUE)
 #   train <- subst_list$train
-#   test <- subst_list$test 
-#   return(randomforest_model(train, test))
+#   test <- subst_list$test
+#   return(randomforest_model(train, test, "under"))
 # })
 
 rf_sub_result <- rf_5fold_cross(airbnb_train, folds, type ="sub")
@@ -97,8 +97,8 @@ rf_over_full_result <- rf_5fold_cross(airbnb_train, folds, type ="over")
 ```
 
 ```{r}
-names(rf_sub_result) <- lapply(as.list(1:5), function(t){paste0("fold", as.character(t))}) %>% unlist()
-sapply(rf_sub_result, "[", "mis_class")
+names(rf_sub_under_result) <- lapply(as.list(1:4), function(t){paste0("fold", as.character(t))}) %>% unlist()
+sapply(rf_sub_under_result, "[", "mis_class")
 ```
 
 
