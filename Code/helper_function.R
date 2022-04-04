@@ -216,3 +216,37 @@ loadRData <- function(fileName) {
 }
 
 
+# Cite: LetterRecog-multLogit.pdf
+#' @description
+#' Prediction intervals for a categorical response
+#' @param ProbMatrix of dimension nxJ, J = # categories,
+#' each row is a probability mass function
+#' @param labels vector of length J, with short names for categories
+#'
+#' @details
+#' A more general function can be written so the levels of prediction intervals
+#' can be other than 0.50 and 0.80.
+#'
+#' @return list with two string vectors of length n:
+#' pred50 has 50% prediction intervals
+#' pred80 has 80% prediction intervals
+#'
+CategoryPredInterval = function(ProbMatrix,labels)
+{ ncases=nrow(ProbMatrix)
+pred50=rep(NA,ncases); pred80=rep(NA,ncases)
+for(i in 1:ncases)
+{ p=ProbMatrix[i,]
+ip=order(p,decreasing=T)
+pOrdered=p[ip] # decreasing order
+labelsOrdered=labels[ip] # decreasing order
+G=cumsum(pOrdered) # cumulative sum from largest
+k1=min(which(G>=0.5)) # level1= 0.5
+k2=min(which(G>=0.8)) # level2= 0.8
+pred1=labelsOrdered[1:k1]; pred2=labelsOrdered[1:k2]
+pred50[i]=paste(pred1,collapse="")
+pred80[i]=paste(pred2,collapse="")
+}
+list(pred50=pred50, pred80=pred80)
+}
+
+

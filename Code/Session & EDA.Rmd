@@ -326,5 +326,14 @@ folds <- createFolds((airbnb_train %>% lapply(as.factor))$country_destination, k
 
 ### Save Data
 ```{r}
-save(airbnb_train, folds, file = paste0(here::here(),"/Data/","airbnb.RData"))
+# save(airbnb_train, folds, file = paste0(here::here(),"/Data/","airbnb.RData"))
 ```
+
+
+```{r}
+airbnb_train %>% ggplot(aes(x = AppleCate)) + geom_histogram(stat = "count")
+airbnb_train %>% ggplot(aes(x = AndroidCate)) + geom_histogram(stat = "count")
+airbnb_train %>% ggplot(aes(x = WindowsCate)) + geom_histogram(stat = "count")
+airbnb_train %>% ggplot(aes(x = OtherCate)) + geom_histogram(stat = "count")
+```
+

@@ -1,0 +1,75 @@
+---
+title: "R multinomial"
+---
+
+# Load Data and Library
+```{r Load Data}
+load(paste0(here::here(), "/Data/airbnb.RData"))
+source(paste0(here::here(),"/Code/helper_function.R"))
+source(paste0(here::here(),"/Code/modeling_functions.R"))
+set.seed(2023)
+
+library(purrr)
+library(tidyverse)
+library(nnet)
+library(caret)
+```
+
+
+```{r}
+multi_5fold_cross <- function(df, foldidx, type = "full") {
+  if (type == "sub"){df <-  df %>%  select(-c(signup_app, signup_flow, affiliate_channel, affiliate_provider))}
+  if (type == "under"){df <-  downSample(x = df[, -16], y = df[16])}
+  if (type == "over"){df <-  upSample(x = df[,-16], y= df[,16])}
+  model_lists <- lapply(as.list(1:5), function(t){
+    subst_list <- extract_folds(df, t, folds, test = TRUE)
+    train <- subst_list$train
+    test <- subst_list$test
+    return(multinom_model(train, test))
+  })
+  return(model_lists)
+}
+
+multinom_model <- function(training, holdout) {
+  
+  multi <- multinom(country_destination ~., data = training)
+  
+  # Make prediction
+  multi_pred <- predict(multi, newdata = holdout, type = "probs")
+  # Extract Prediction Interval, misclassification rate
+  pred_interval <- CategoryPredInterval(multi_pred, holdout$country_destination %>% levels())
+  # table(holdout$country_destination, pred_interval$pred50)
+  # table(holdout$country_destination, pred_interval$pred80)
+  mis_class <- lapply(pred_interval, get_misclass_rate, actual = holdout$country_destination)
+  
+  return(list(model = multi, pred = multi_pred, pred_interval = pred_interval, mis_class = mis_class))
+}
+```
+
+```{r}
+mult_full <- multi_5fold_cross(airbnb_train, folds)
+mult_sub <- multi_5fold_cross(airbnb_train, folds, "sub")
+mult_under <- multi_5fold_cross(airbnb_train, folds, "under")
+mult_over <- multi_5fold_cross(airbnb_train, folds, "over")
+```
+
+```{r}
+mis_class_sub <- sapply(mult_sub, "[", "mis_class")
+mis_class_ful <- sapply(mult_full, "[", "mis_class")
+mis_class_ful_under <- sapply(mult_under, "[", "mis_class")
+mis_class_ful_over <- sapply(mult_over, "[", "mis_class")
+
+mult_misclass <- data.frame(full_50 = sapply(mis_class_ful, "[", "pred50") %>% unlist(),
+                          sub_50 = sapply(mis_class_sub, "[", "pred50") %>% unlist(),
+                          under_50 = sapply(mis_class_ful_under, "[", "pred50") %>% unlist(),
+                          over_50 = sapply(mis_class_ful_over, "[", "pred50") %>% unlist(),
+                          full_80 = sapply(mis_class_ful, "[", "pred80") %>% unlist(),
+                          sub_80 = sapply(mis_class_sub, "[", "pred80") %>% unlist(),
+                          under_80 = sapply(mis_class_ful_under, "[", "pred80") %>% unlist(),
+                          over_80 = sapply(mis_class_ful_over, "[", "pred80") %>% unlist()
+                          )
+rownames(mult_misclass) <- c("Fold1", "Fold2", "Fold3", "Fold4", "Fold5")
+
+mult_misclass["avg",] <- colMeans(mult_misclass)
+```
+
