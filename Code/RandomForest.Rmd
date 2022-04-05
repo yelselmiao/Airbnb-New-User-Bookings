@@ -12,6 +12,7 @@ library(purrr)
 library(tidyverse)
 library(caret)
 library(randomForest)
+library(pROC)
 ```
 
 # Feature Selection
@@ -104,7 +105,7 @@ sapply(rf_sub_under_result, "[", "mis_class")
 
 
 ```{r}
-# load(paste0(here::here(), "/Data/rf_model_results.RData"))
+load(paste0(here::here(), "/Data/rf_model_results.RData"))
 mis_class_sub <- sapply(rf_sub_result, "[", "mis_class")
 mis_class_ful <- sapply(rf_full_result, "[", "mis_class")
 mis_class_ful_under <- sapply(rf_under_full_result, "[", "mis_class")
@@ -133,4 +134,14 @@ save(rf_full_result, rf_sub_result, rf_under_full_result, rf_over_full_result,
 ```{r}
 save(rf_misclass, file = paste0(here::here(), "/Data/rf_results.RData"))
 ```
+
+```{r}
+test <- rf_over_full_result[[1]]
+
+test_test <- extract_folds(df = airbnb_train, target_fold = 1, fold_idx = folds)
+
+test_ROC <- roc(test_test$country_destination, test$pred[,2])
+test_ROC$auc
+```
+
 
