@@ -210,6 +210,11 @@ destination_prop_tb <- function(data) {
     mutate(prop = scales::percent(n / sum(n)))
 }
 
+loadRData <- function(fileName) {
+  load(fileName)
+  get(ls()[ls() != "fileName"])
+}
+
 
 # Cite: LetterRecog-multLogit.pdf
 #' @description
