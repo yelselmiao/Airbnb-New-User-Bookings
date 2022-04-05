@@ -25,7 +25,7 @@ suppressPackageStartupMessages(library(mice))
 ```{r Load Data, message=FALSE, warning=FALSE}
 data_path <- paste0(here::here(), '/Data/')
 # users_train <- read.csv(paste0(data_path,"users_train_cleaned.csv"))
-users_train <- read_csv(paste0(data_path,"train_users_2.csv"), na = c("", "-unknown-"))
+users_train <- read.csv(paste0(data_path,"train_users_2.csv"), na = c("", "-unknown-"))
 age_gender_bkts <- read.csv(paste0(data_path,"age_gender_bkts.csv"))   
 sessions <- read.csv(paste0(data_path,"sessions.csv"))
 countries <- read.csv(paste0(data_path,"countries.csv"))
