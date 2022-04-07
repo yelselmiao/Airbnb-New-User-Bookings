@@ -12,99 +12,22 @@ library(purrr)
 library(tidyverse)
 library(caret)
 library(randomForest)
-```
-
-# Feature Selection
-```{r}
-# Tunning mtry
-mtry <- tuneRF(airbnb_train %>% select(-country_destination) , airbnb_train$country_destination, ntreeTry=500,
-               stepFactor=1.5,improve=0.01, trace=TRUE, plot=TRUE)
-best.m <- mtry[mtry[, 2] == min(mtry[, 2]), 1]
-print(mtry)
-print(best.m)
-
-rf <- randomForest(country_destination ~., data = airbnb_train, importance=TRUE, ntree = 500, mtry = best.m)
-varImpPlot(rf)
-rf
+library(pROC)
 ```
 
 
 
-# Random Forest
-
 ```{r}
-# Subset the for model code, choest testing the the first fold
-airbnb_data_sub <- airbnb_train %>% 
-  select(signup_method, log_unique_actionTrp, date_account_created, log_total_action, date_first_active, AppleCate, first_browser, OtherCate,
-         country_destination)
-
-subst_list <- extract_folds(airbnb_train, 1, folds, test = TRUE)
-train <- subst_list$train
-test <- subst_list$test
-rm(subst_list)
-```
-
-
-```{r}
-# Tunning mtry
-mtry <- tuneRF(train %>% select(-country_destination) , train$country_destination, ntreeTry=500,
-               stepFactor=1.5,improve=0.01, trace=TRUE, plot=TRUE)
-best.m <- mtry[mtry[, 2] == min(mtry[, 2]), 1]
-
-```
-
-```{r}
-samplesize <- (((train %>% group_by(country_destination) %>% tally())$n)/3 * 2) %>% round()
-samplesize <-  rep(samplesize[1],3)
-names(samplesize) <- c("other", "US", "NDF")
-rf <- randomForest(country_destination ~., data = train, importance=TRUE, ntree = 500, mtry = best.m,
-                   strata =train$country_destination, samplesize = samplesize)
-rf_pred <- predict(rf,type = "prob", newdata = test)
-pred_interval <- CategoryPredInterval(rf_pred, test$country_destination %>% levels())
-# table(test$country_destination, pred_interval$pred50)
-# table(test$country_destination, pred_interval$pred80)
-mis_class <- lapply(pred_interval, get_misclass_rate, actual = test$country_destination)
-
-```
-
-
-
-
-```{r}
-rf_over_full_result <- lapply(as.list(1:5), function(t){
-  subst_list <- extract_folds(airbnb_train, t, folds, test = TRUE)
-  train <- subst_list$train
-  test <- subst_list$test
-  return(randomforest_model(train, test))
-})
-```
-
-```{r}
-names(rf_over_full_result) <- lapply(as.list(1:5), function(t){paste0("fold", as.character(t))}) %>% unlist()
-sapply(rf_under_full_result, "[", "mis_class")
-```
-
-```{r}
-# rf_sub_under_result <- lapply(as.list(1:4), function(t){
-#   subst_list <- extract_folds(airbnb_data_sub, t, folds, test = TRUE)
-#   train <- subst_list$train
-#   test <- subst_list$test
-#   return(randomforest_model(train, test, "under"))
-# })
-
+# Each model take about 30 mins to run, 2 hr to run the whole thing
+rf_full_result <- rf_5fold_cross(airbnb_train, folds, type ="full")
 rf_sub_result <- rf_5fold_cross(airbnb_train, folds, type ="sub")
 rf_over_full_result <- rf_5fold_cross(airbnb_train, folds, type ="over")
-```
-
-```{r}
-names(rf_sub_under_result) <- lapply(as.list(1:4), function(t){paste0("fold", as.character(t))}) %>% unlist()
-sapply(rf_sub_under_result, "[", "mis_class")
+rf_over_under_result <- rf_5fold_cross(airbnb_train, folds, type ="under")
 ```
 
 
-
-```{r}
-# load(paste0(here::here(), "/Data/rf_model_results.RData"))
+```{r Get Misclassification Rate}
+#  load(paste0(here::here(), "/Data/rf_model_results.RData"))
 mis_class_sub <- sapply(rf_sub_result, "[", "mis_class")
 mis_class_ful <- sapply(rf_full_result, "[", "mis_class")
 mis_class_ful_under <- sapply(rf_under_full_result, "[", "mis_class")
@@ -124,6 +47,39 @@ rownames(rf_misclass) <- c("Fold1", "Fold2", "Fold3", "Fold4", "Fold5")
 rf_misclass["avg",] <- colMeans(rf_misclass)
 ```
 
+```{r AUC}
+# Obtain the AUC of the best model -- oversampling model
+auc <- lapply(as.list(1:5), function(t){
+  test_ROC <- multiclass.roc(extract_folds(df = airbnb_train, target_fold = t, fold_idx = folds)$country_destination, 
+                  rf_over_full_result[[t]]$pred[,2]) 
+  test_ROC$auc
+  
+})
+
+auc <- auc %>% unlist()
+auc <- c(auc, mean(auc))
+auc
+```
+
+```{r Interval Score}
+# Calculate the interval score for the best model
+IS50 <- lapply(as.list(1:5), function(fold){
+  IS <- ComputeIntervalScore(rf_over_full_result[[fold]]$pred,
+                             extract_folds(airbnb_train, fold, folds)$country_destination,
+                             0.5) }) %>% unlist()
+IS50 <- c(IS50, mean(IS50))
+
+IS80 <- lapply(as.list(1:5), function(fold){
+  IS <- ComputeIntervalScore(rf_over_full_result[[fold]]$pred,
+                             extract_folds(airbnb_train, fold, folds)$country_destination,
+                             0.2) }) %>% unlist()
+IS80 <- c(IS80, mean(IS80))
+
+IS50
+IS80
+```
+
+
 ## Save rf_model_realvant info
 ```{r}
 save(rf_full_result, rf_sub_result, rf_under_full_result, rf_over_full_result,
@@ -131,6 +87,8 @@ save(rf_full_result, rf_sub_result, rf_under_full_result, rf_over_full_result,
 ```
 
 ```{r}
-save(rf_misclass, file = paste0(here::here(), "/Data/rf_results.RData"))
+save(rf_misclass, auc, file = paste0(here::here(), "/Data/rf_results.RData"))
 ```
+
+
 

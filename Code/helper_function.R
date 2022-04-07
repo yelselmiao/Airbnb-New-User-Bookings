@@ -250,3 +250,32 @@ list(pred50=pred50, pred80=pred80)
 }
 
 
+#' Calculate Interval Score for a single fold
+#'
+#' @param predProb  a matrix of prediction probabilities with row names (other, US, NDF),
+#' @param actual a vector of the actual class
+#' @param alpha scalar number, e.g. at 80% level, alpha = 0.2
+#'
+#' @return a scalar number of interval score
+ComputeIntervalScore <- function(predProb, actual, alpha) {
+  
+  # Calculate interval score for a single observation
+  calculateIS <- function(other, US, NDF, actual){ 
+    other = as.double(other)
+    US = as.double(US)
+    NDF = as.double(NDF)
+    score <- switch (actual,
+                     "other" = {2/alpha * (US + NDF) + ifelse(other < (1-alpha), 2/alpha * (1-alpha - other), 0)},
+                     "US" = {2/alpha * (other + NDF) + ifelse(US < (1-alpha), 2/alpha * (1-alpha - US), 0)},
+                     "NDF" = {2/alpha * (US + other) + ifelse(NDF < (1-alpha), 2/alpha * (1-alpha - NDF), 0)}
+    )
+    return(score)
+  }
+  IS <- predProb %>% as.data.frame %>% mutate(target = actual) %>%
+    apply(1, function(r){calculateIS(r[1], r[2], r[3], r[4])}) %>% 
+    mean()
+  
+  return(IS)
+}
+
+
