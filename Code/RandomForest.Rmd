@@ -61,6 +61,24 @@ auc <- c(auc, mean(auc))
 auc
 ```
 
+```{r Interval Score}
+# Calculate the interval score for the best model
+IS50 <- lapply(as.list(1:5), function(fold){
+  IS <- ComputeIntervalScore(rf_over_full_result[[fold]]$pred,
+                             extract_folds(airbnb_train, fold, folds)$country_destination,
+                             0.5) }) %>% unlist()
+IS50 <- c(IS50, mean(IS50))
+
+IS80 <- lapply(as.list(1:5), function(fold){
+  IS <- ComputeIntervalScore(rf_over_full_result[[fold]]$pred,
+                             extract_folds(airbnb_train, fold, folds)$country_destination,
+                             0.2) }) %>% unlist()
+IS80 <- c(IS80, mean(IS80))
+
+IS50
+IS80
+```
+
 
 ## Save rf_model_realvant info
 ```{r}
