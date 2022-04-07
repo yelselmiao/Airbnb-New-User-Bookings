@@ -7,6 +7,7 @@ editor_options:
 ---
 
 
+
 ```{r Set up Package}
 suppressPackageStartupMessages(library(tidyverse))
 suppressForeignCheck(library(e1071))
@@ -74,6 +75,12 @@ Therefore we will drop the following variables:
 * affiliate_channel  
 * affiliate_provider  
 
+```{r}
+airbnb_data_sub <- airbnb_data %>% 
+  select(-c(signup_app, signup_flow, affiliate_channel, affiliate_provider))
+
+```
+
 and re-fit the Naive Bayes classifier. The results are as shown below:  
 
 ```{r Fit Model on a subset of predictors}
@@ -125,7 +132,8 @@ res_summary <- cbind(
   
   res_sub_resample
 )
-res_summary
+res_summary %>% 
+  select(full_50, sub_50, up_50, down_50, full_80, sub_80, up_80, down_80)
 ```
 
 
