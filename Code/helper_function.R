@@ -257,8 +257,6 @@ list(pred50=pred50, pred80=pred80)
 #' @param alpha scalar number, e.g. at 80% level, alpha = 0.2
 #'
 #' @return a scalar number of interval score
-#'
-#' @examples
 ComputeIntervalScore <- function(predProb, actual, alpha) {
   
   # Calculate interval score for a single observation
