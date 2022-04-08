@@ -9,7 +9,7 @@ editor_options:
 ```{r Examine RFE results }
 # source code to run recursive feature elimination for each training fold
 # for (k in 1:5){
-#   train_folds <- airbnb_data_sub[-folds[[k]], ]
+#   train_folds <- airbnb_cleaned[-folds[[k]], ]
 #   res <- rfe_rf_procedure(train_folds)
 #   save(res, file = paste0(here::here(), '/Data/rfe_',k, '.Rdata'))
 # }
@@ -47,4 +47,5 @@ res_rfe_sub_3$optVariables[1:5]
 res_rfe_sub_4$optVariables[1:5]
 res_rfe_sub_5$optVariables[1:5]
 ```
+
 
