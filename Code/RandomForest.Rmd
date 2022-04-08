@@ -1,6 +1,14 @@
 ---
 title: "RandomForest"
 ---
+File description:
+- Perform Random Forest Model Training and Fitting for 4 submodels
+  - Full model
+  - Subseted model through Recursive Feature Selection
+  - Undersampling model
+  - Oversampling model
+- Calculated roc and interval score values for the best model
+
 # Load Data and Library
 ```{r Load Data}
 load(paste0(here::here(), "/Data/airbnb.RData"))
@@ -19,10 +27,10 @@ library(pROC)
 
 ```{r}
 # Each model take about 30 mins to run, 2 hr to run the whole thing
-rf_full_result <- rf_5fold_cross(airbnb_train, folds, type ="full")
-rf_sub_result <- rf_5fold_cross(airbnb_train, folds, type ="sub")
-rf_over_full_result <- rf_5fold_cross(airbnb_train, folds, type ="over")
-rf_over_under_result <- rf_5fold_cross(airbnb_train, folds, type ="under")
+rf_full_result <- rf_5fold_cross(airbnb_data, folds, type ="full")
+rf_sub_result <- rf_5fold_cross(airbnb_data, folds, type ="sub")
+rf_over_full_result <- rf_5fold_cross(airbnb_data, folds, type ="over")
+rf_over_under_result <- rf_5fold_cross(airbnb_data, folds, type ="under")
 ```
 
 
@@ -50,7 +58,7 @@ rf_misclass["avg",] <- colMeans(rf_misclass)
 ```{r AUC}
 # Obtain the AUC of the best model -- oversampling model
 auc <- lapply(as.list(1:5), function(t){
-  test_ROC <- multiclass.roc(extract_folds(df = airbnb_train, target_fold = t, fold_idx = folds)$country_destination, 
+  test_ROC <- multiclass.roc(extract_folds(df = airbnb_data, target_fold = t, fold_idx = folds)$country_destination, 
                   rf_over_full_result[[t]]$pred[,2]) 
   test_ROC$auc
   
@@ -65,13 +73,13 @@ auc
 # Calculate the interval score for the best model
 IS50 <- lapply(as.list(1:5), function(fold){
   IS <- ComputeIntervalScore(rf_over_full_result[[fold]]$pred,
-                             extract_folds(airbnb_train, fold, folds)$country_destination,
+                             extract_folds(airbnb_data, fold, folds)$country_destination,
                              0.5) }) %>% unlist()
 IS50 <- c(IS50, mean(IS50))
 
 IS80 <- lapply(as.list(1:5), function(fold){
   IS <- ComputeIntervalScore(rf_over_full_result[[fold]]$pred,
-                             extract_folds(airbnb_train, fold, folds)$country_destination,
+                             extract_folds(airbnb_data, fold, folds)$country_destination,
                              0.2) }) %>% unlist()
 IS80 <- c(IS80, mean(IS80))
 
