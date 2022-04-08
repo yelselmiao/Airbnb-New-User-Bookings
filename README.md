@@ -5,6 +5,10 @@
 - ggplot2
 - lubridate
 - mice
+- caret
+- purrr
+- randomForest
+- pROC
 
 ## Order in which Files are Ran
 1. (Optional, sourced in R markdowns) helper_functions.R
