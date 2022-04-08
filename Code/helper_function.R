@@ -186,7 +186,7 @@ CategoryPredInterval = function(ProbMatrix, labels)
   list(pred50 = pred50, pred80 = pred80)
 }
 
-#' Calculate misclassification rate
+#' Calculate prediction interval misclassification rate 
 #'
 #' @param actual the actual value
 #' @param pred the prediction value
@@ -198,6 +198,21 @@ get_misclass_rate <- function(actual, pred) {
   crt_class <- (acc_tbl %>% rowwise() %>% filter(grepl(actual, pred)))$Freq %>% sum()
   return((all_obs - crt_class)/all_obs)
 }
+
+
+#' Calculate point prediction misclassification rate
+#'
+#' @param actual the actual value
+#' @param pred the prediction value
+#'
+#' @return double, calculated missclassication rate
+get_point_misclass_rate <- function(actual, pred) {
+  acc_tbl <- table(actual, pred) %>% as.data.frame.table()
+  all_obs <- acc_tbl$Freq %>% sum()
+  crt_class <- (acc_tbl %>% rowwise() %>% filter(pred == actual))$Freq %>% sum()
+  return((all_obs - crt_class)/all_obs)
+}
+
 
 #' check the proportion of each category in the response variable 
 #' @param date the dataset that you would like to check 
