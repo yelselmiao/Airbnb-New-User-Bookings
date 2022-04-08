@@ -1,0 +1,315 @@
+---
+title: "Data Cleaning and Exploratory Data Analysis"
+editor_options: 
+  chunk_output_type: inline
+---
+
+Airbnb challenges you to predict in which country a new user will make his or her first booking
+
+In this challenge, you are given a list of users along with their demographics, web session records, and some summary statistics. You are asked to predict which country a new user's first booking destination will be. All the users in this dataset are from the USA.
+
+There are 12 possible outcomes of the destination country: 'US', 'FR', 'CA', 'GB', 'ES', 'IT', 'PT', 'NL','DE', 'AU', 'NDF' (no destination found), and 'other'. Please note that 'NDF' is different from 'other' because 'other' means there was a booking, but is to a country not included in the list, while 'NDF' means there wasn't a booking.
+
+The training and test sets are split by dates. In the test set, you will predict all the new users with first activities after 7/1/2014 (note: this is updated on 12/5/15 when the competition restarted). In the sessions dataset, the data only dates back to 1/1/2014, while the users dataset dates back to 2010. 
+
+https://www.kaggle.com/c/airbnb-recruiting-new-user-bookings/data
+
+## Load Libraries and Data
+```{r library}
+suppressPackageStartupMessages(library(tidyverse))
+suppressPackageStartupMessages(library(ggplot2))
+suppressPackageStartupMessages(library(ggridges))
+suppressPackageStartupMessages(library(lubridate))
+suppressPackageStartupMessages(library(mice))
+suppressPackageStartupMessages(library(caret))
+```
+
+
+```{r Load Data, message=FALSE, warning=FALSE}
+data_path <- paste0(here::here(), '/Data/')
+users_train <- read.csv(paste0(data_path,"train_users_2.csv"), na = c("", "-unknown-"))
+age_gender_bkts <- read.csv(paste0(data_path,"age_gender_bkts.csv"))   
+sessions <- read.csv(paste0(data_path,"sessions.csv"))
+countries <- read.csv(paste0(data_path,"countries.csv"))
+
+# Load helper functions
+source("helper_function.R")
+```
+
+
+## Clean session
+
+
+#### Action Group
+```{r Missing Value Handling, message=FALSE}
+#' Only keep the session data relavant to test & train set, key = user_id
+sessions <- sessions %>% filter(user_id %in% users_train$id)
+
+#' Deal with Missing Values
+#' Fill na is time elpse with 0 
+#' Change -unknown- level in action, action_type, action_detail to NA
+#' Drop rows for which "user_id == NA"
+sessions <- sessions %>% mutate(secs_elapsed = replace_na(secs_elapsed, 0)) %>% drop_na(user_id)
+
+```
+
+
+```{r Action Group Frequency Encoding}
+# Compute the number unique actions (action_group) each user performed
+num_diff_actions <- sessions %>% 
+  mutate(action_group = paste(action, action_type, action_detail, sep = "/")) %>%
+  select(user_id, action_group) %>% 
+  group_by(user_id) %>% summarise(num_diff_action = n_distinct(action_group))
+
+# Compute the number different of actions each user performed in total
+actions <- sessions %>% 
+  group_by(user_id) %>% summarise(total_action = n()) %>% 
+  left_join(num_diff_actions)
+rm(num_diff_actions)
+
+#' Plot distribution of total action, it is found that the original data is heavily left skewed
+#' A log transformation is then applied as a solution
+actions %>% ggplot(aes(x = total_action)) + geom_histogram()
+actions %>% ggplot(aes(x = log(total_action))) + geom_histogram()
+
+actions %>% ggplot(aes(x = num_diff_action)) + geom_histogram()
+actions %>% ggplot(aes(x = log(num_diff_action))) + geom_histogram()
+
+# Apply log transformation
+actions <- actions %>% mutate(log_total_action = log(total_action),
+                              log_unique_actionTrp = log(num_diff_action),
+                              total_action = NULL, num_diff_action = NULL)
+
+```
+
+
+#### Device
+```{r}
+# Category count check
+# sessions %>% ggplot(aes(device_type)) +geom_bar()
+
+# Combine device type categories into four main ones: Windows, Android, Apple
+orgn_cate <- sessions$device_type %>% factor() %>% levels()
+new_cate <- c("Other", rep("Android", 3), "Windows", rep("Apple",3), "Other", "Apple", "Android",
+              "Android", rep("Windows", 2))
+devices <- sessions %>% mutate(devices = plyr::mapvalues(device_type, from = orgn_cate, to = new_cate), 
+                               device_type = NULL) %>%
+  group_by(user_id, devices) %>% summarise(total_secs = sum(secs_elapsed), .groups = "keep") %>% 
+  ungroup() %>% 
+  pivot_wider(names_from = devices, values_from = total_secs, id_cols = user_id, values_fill = 0)
+```
+
+
+```{r message=FALSE}
+# Plot Category to obtain transformation details
+
+devices %>% ggplot(aes(x = Apple)) + geom_histogram()
+devices %>%  ggplot(aes(x = (Apple^(1/3)))) + geom_histogram() # Too many 0s --> binning
+
+devices %>% ggplot(aes(x = Android)) + geom_histogram()
+devices %>% ggplot(aes(x = (Android^(1/3)))) + geom_histogram() # Too many 0s --> binning
+
+devices %>% ggplot(aes(x = Windows)) + geom_histogram()
+devices %>% ggplot(aes(x = (Windows^(1/3)))) + geom_histogram() # Too many 0s --> binning
+
+devices %>% ggplot(aes(x = Other)) + geom_histogram()
+devices %>% ggplot(aes(x = log(Other))) + geom_histogram() # bimodal distribution -> binning
+
+```
+
+```{r}
+# Device transformation
+device_trans <- devices %>% mutate(cbrt_Apple = Apple^ (1/3), cbrt_Android = Android^(1/3),
+                                   cbrt_Windows = Windows^(1/3)) %>% 
+  select(-c(Apple, Android, Windows))
+
+# Log breaks and bin
+otherBreaks <- c(-1, exp(8.5), max(devices$Other))
+device_trans <- device_trans %>% mutate(OtherCate = cut(Other, otherBreaks)) %>% select(-Other)
+
+# cbrt Breaks
+cbrt_AppleBreaks <- c(-0.01, 0.01,
+                      quantile(device_trans$cbrt_Apple[device_trans$cbrt_Apple != 0 ], 0.5),
+                      max(device_trans$cbrt_Apple))
+cbrt_AndroidBreaks <- c(-0.01, 0.01,
+                        quantile(device_trans$cbrt_Android[device_trans$cbrt_Android != 0 ], 0.5),
+                        max(device_trans$cbrt_Android))
+cbrt_WindowsBreaks <- c(-0.01, 0.01,
+                        quantile(device_trans$cbrt_Windows[device_trans$cbrt_Windows != 0 ], 0.5),
+                        max(device_trans$cbrt_Windows))
+# cbrt Binned
+device_trans <- device_trans %>% mutate(AppleCate = cut(cbrt_Apple, cbrt_AppleBreaks),
+                                        AndroidCate = cut(cbrt_Android, cbrt_AndroidBreaks),
+                                        WindowsCate = cut(cbrt_Windows, cbrt_WindowsBreaks)) %>% 
+  select(-c(cbrt_Apple, cbrt_Android, cbrt_Windows))
+
+```
+
+
+
+```{r}
+# Plot distribution after binning
+airbnb_train %>% ggplot(aes(x = AppleCate)) + geom_histogram(stat = "count")
+airbnb_train %>% ggplot(aes(x = AndroidCate)) + geom_histogram(stat = "count")
+airbnb_train %>% ggplot(aes(x = WindowsCate)) + geom_histogram(stat = "count")
+airbnb_train %>% ggplot(aes(x = OtherCate)) + geom_histogram(stat = "count")
+```
+
+### Join Action & Device
+
+```{r}
+new_session <- full_join(actions, device_trans, by = "user_id")
+```
+
+
+## Joining with user_train
+```{r}
+airbnb_train <- inner_join(users_train, new_session, by = c("id" = "user_id"))
+```
+
+
+## User Data Transformation
+
+### Missing Value Handling
+
+Varaibles in `airbnb_train`: 
+- id: user id  
+- date_account_created: the date of account creation  
+- timestamp_first_active: timestamp of the first activity, note that it can be earlier than  
+(date_account_created or date_first_booking because a user can search before signing up)
+- date_first_booking: date of first booking  
+- gender  
+- age  
+- signup_method  
+- signup_flow: the page a user came to signup up from  
+- language: international language preference  
+- affiliate_channel: what kind of paid marketing  
+- affiliate_provider: where the marketing is e.g. google, craigslist, other  
+- first_affiliate_tracked: whats the first marketing the user interacted with before the signing up  
+- signup_app  
+- first_device_type  
+- first_browser  
+- country_destination: response var  
+
+```{r}
+######################################################## Age 32412 missing value (43.9%) 
+
+# Age abnormal case 1: the data is collected in 2015, according to the Airbnb term of use, the minimum age required for account creation is 18, so I assume ages < 18 are faulty inputs
+
+# Age abnormal case 2: similarily, for those who wrong entered year as age, if it's greater than 2015-18 = 1997, it's faulty entry
+
+# convert these problematic age entries as NA
+airbnb_train$age[airbnb_train$age < 18 | airbnb_train$age > 1997] <- NA
+
+# convert problematic year entry to age
+airbnb_train <- airbnb_train %>% 
+  mutate(true_age = ifelse(age > 1000, 2015 - age, age))
+  
+######################################################## Gender (37788 missing value) - (51.2%)
+nrow(airbnb_train %>% 
+  filter(is.na(gender))) 
+
+
+# since it's far beyond acceptable proportion of missing value in terms of age and gender, I think a complete case analysis is perhaps more reasonable than imputed data analysis 
+airbnb_train_cc <- airbnb_train %>% 
+  filter(!is.na(gender) & !is.na(age))
+```
+
+```{r visualize missingness in gender and age, fig.width=8, fig.height=3}
+destination_prop_plot(airbnb_train_cc)
+destination_prop_plot(airbnb_train)
+```
+
+
+
+```{r check data missing for other char columns}
+map(airbnb_train, ~sum(is.na(.))/nrow(airbnb_train))
+map(airbnb_train_cc, ~sum(is.na(.))/nrow(airbnb_train_cc))
+
+
+# date_first_booking: 16565; 48.1%
+# drop this column 
+
+# first_affiliate_tracked: 126 (0.3%)
+# treat missing value as a separate category 
+
+
+# first_browser: 5204 (15.1%)
+# treat missing value as a separate category 
+```
+
+
+```{r convert data col & convert char to factor, warning = FALSE}
+airbnb_cc <- airbnb_train_cc %>%
+  mutate(
+    date_first_active = as.Date(ymd_hms(timestamp_first_active),'%Y-%m-%d'),
+    date_account_created = as.Date(date_account_created, '%Y-%m-%d'),
+    date_first_booking = as.Date(date_first_booking, '%Y-%m-%d')
+  ) %>% 
+  relocate(date_first_active, .before = date_first_booking) %>%
+  select(-timestamp_first_active) 
+```
+
+
+```{r check the factor cols (contingency table)}
+# contingency table of each factor column
+# print(category_count(airbnb_cc))
+
+# combine categories with small counts 
+airbnb_cleaned <- category_comb(airbnb_cc)
+
+# contingency table of each factor column
+# print(category_count(airbnb_cleaned))
+
+# further merge categories
+airbnb_cleaned <- category_comb_II(airbnb_cleaned)
+
+
+# re-factor the categories 
+airbnb_cleaned <- airbnb_cleaned %>% 
+  mutate_if(is.character, factor) %>% 
+  mutate_if(is.factor, factor)
+
+# sort the destinations
+airbnb_cleaned <- des_sorter(airbnb_cleaned)
+  
+# check the count of each category in each categorical variable again 
+category_count(airbnb_cleaned)
+```
+
+
+### True Age filtering
+```{r}
+# Filter out unreasonable age
+airbnb_cleaned <- airbnb_cleaned %>% filter(true_age < 95) %>% 
+  mutate(log_age = log(true_age)) %>% 
+  select(-c(id, date_first_booking, age, true_age))
+
+#' Date encoding
+#' Since the Data set is taken from 2015, we decide to change data information to the number of days
+#' away from 2015/01/01
+target_date <- as_datetime("2015/01/01")
+airbnb_cleaned <- airbnb_cleaned %>% mutate(
+  date_account_created = target_date - as_datetime(date_account_created),
+  date_first_active = target_date - as_datetime(date_first_active))
+
+# Check for transformation in date variables
+airbnb_cleaned %>% ggplot(aes(x = date_account_created)) + geom_histogram()
+airbnb_cleaned %>% ggplot(aes(x = date_first_active)) + geom_histogram()
+```
+
+### Data Split For Five Fold cross validation
+```{r}
+load(paste0(here::here(), "/Data/airbnb.RData"))
+
+set.seed(2023)
+folds <- createFolds((airbnb_cleaned %>% lapply(as.factor))$country_destination, k = 5)
+```
+
+
+### Save Data
+```{r}
+# save(airbnb_cleaned, folds, file = paste0(here::here(),"/Data/","airbnb.RData"))
+```
+
+
