@@ -1,4 +1,5 @@
 # Airbnb New User Bookings Project
+Note: Although the seed is set to 2023, we ran into a technique issue for which set seeds works differently on one of the team members computers. Therefore, for both the session cleaning and random forest file, to reproduce the exact outcome, please use the RData files in the <data> folder. Otherwise the code may produce a sligthly different result as the observations in cross-validation folds will be different.
 
 ## Required R Library
 - tidyverse
