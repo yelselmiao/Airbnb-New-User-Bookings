@@ -1,0 +1,737 @@
+---
+title: Multinomial Logistic Regression
+output: html_document
+---
+
+We perform the multinomial logistic regression on 5 folds of the cleaned data, specifically running the full model, subsetted model on original data, undersampled data, and oversampled data.
+
+### Loading the Libraries and Data
+
+```{r}
+library(tidyverse)
+library(lubridate)
+library(VGAM)
+library(dplyr)
+library(caret)
+```
+
+```{r}
+df = read.csv("/Users/yifanloo/Downloads/airbnb_train2.csv")
+fold1 = read.csv("/Users/yifanloo/Downloads/fold1.csv")
+fold2 = read.csv("/Users/yifanloo/Downloads/fold2.csv")
+fold3 = read.csv("/Users/yifanloo/Downloads/fold3.csv")
+fold4 = read.csv("/Users/yifanloo/Downloads/fold4.csv")
+fold5 = read.csv("/Users/yifanloo/Downloads/fold5.csv")
+df = select(df, -"X")
+df$country_destination <- relevel(factor(df$country_destination), ref = "NDF")
+folds = list(fold1,fold2,fold3,fold4,fold5)
+head(df)
+colnames(df)
+dim(df)
+```
+
+```{r}
+df$country_destination <- relevel(factor(df$country_destination), ref = "NDF")
+f1 = df[fold1$x,]
+f2 = df[fold2$x,]
+f3 = df[fold3$x,]
+f4 = df[fold4$x,]
+f5 = df[fold5$x,]
+folds = list(f1,f2,f3,f4,f5)
+```
+
+```{r}
+ggplot(data = df, mapping = aes(x=country_destination)) + 
+  geom_bar(fill="turquoise",color="white",alpha=0.7)
+```
+
+#### Training on Full Model
+
+```{r}
+library(nnet)
+m1 = nnet::multinom(country_destination ~ ., data = rbind(f2,f3,f4,f5))
+summary(m1)
+m2 = nnet::multinom(country_destination ~ ., data = rbind(f1,f3,f4,f5))
+summary(m2)
+m3 = nnet::multinom(country_destination ~ ., data = rbind(f1,f2,f4,f5))
+summary(m3)
+m4 = nnet::multinom(country_destination ~ ., data = rbind(f1,f2,f3,f5))
+summary(m4)
+m5 = nnet::multinom(country_destination ~ ., data = rbind(f1,f2,f3,f4))
+summary(m5)
+```
+
+##### Holdout Set 50% and 80% Prediction Intervals 
+
+```{r}
+CategoryPredInterval = function(ProbMatrix,labels)
+{ ncases=nrow(ProbMatrix)
+pred50=rep(NA,ncases); pred80=rep(NA,ncases)
+for(i in 1:ncases)
+{ p=ProbMatrix[i,]
+ip=order(p,decreasing=T)
+pOrdered=p[ip] # decreasing order
+labelsOrdered=labels[ip] # decreasing order
+G=cumsum(pOrdered) # cumulative sum from largest
+k1=min(which(G>=0.5)) # level1= 0.5
+k2=min(which(G>=0.8)) # level2= 0.8
+pred1=labelsOrdered[1:k1]; pred2=labelsOrdered[1:k2]
+pred50[i]=paste(pred1,collapse="")
+pred80[i]=paste(pred2,collapse="")
+}
+list(pred50=pred50, pred80=pred80)
+}
+```
+
+```{r}
+outpred1 = predict(m1,type="probs",newdata=f1)
+predint1 = CategoryPredInterval(outpred1,labels=c("NDF","other","US"))
+print(table(f1$country_destination,predint1$pred50))
+print(table(f1$country_destination,predint1$pred80))
+
+pred1.50 = as.data.frame.matrix(table(f1$country_destination,predint1$pred50)) 
+pred1.80 = as.data.frame.matrix(table(f1$country_destination,predint1$pred80)) 
+mc1 = data.frame(rbind(cbind(round(rowSums(select(pred1.50[1,], -contains("NDF")))/rowSums(pred1.50[1,]),3),
+                       round(rowSums(select(pred1.50[2,], -contains("other")))/rowSums(pred1.50[2,]),3),
+                       round(rowSums(select(pred1.50[3,], -contains("US")))/rowSums(pred1.50[3,]),3)),
+                 cbind(round(rowSums(select(pred1.80[1,], -contains("NDF")))/rowSums(pred1.80[1,]),3),
+                       round(rowSums(select(pred1.80[2,], -contains("other")))/rowSums(pred1.80[2,]),3),
+                       round(rowSums(select(pred1.80[3,], -contains("US")))/rowSums(pred1.80[3,]),3))))
+colnames(mc1) = c("NDF","other","US")
+rownames(mc1) = c("50%","80%")
+mc1
+```
+
+```{r}
+outpred2 = predict(m2,type="probs",newdata=f2)
+predint2 = CategoryPredInterval(outpred2,labels=c("NDF","other","US"))
+print(table(f2$country_destination,predint2$pred50))
+predint2 = CategoryPredInterval(outpred2,labels=c("NDF","other","US"))
+print(table(f2$country_destination,predint2$pred80))
+
+pred2.50 = as.data.frame.matrix(table(f2$country_destination,predint2$pred50)) 
+pred2.80 = as.data.frame.matrix(table(f2$country_destination,predint2$pred80)) 
+mc2 = data.frame(rbind(cbind(round(rowSums(select(pred2.50[1,], -contains("NDF")))/rowSums(pred2.50[1,]),3),
+                       round(rowSums(select(pred2.50[2,], -contains("other")))/rowSums(pred2.50[2,]),3),
+                       round(rowSums(select(pred2.50[3,], -contains("US")))/rowSums(pred2.50[3,]),3)),
+                 cbind(round(rowSums(select(pred2.80[1,], -contains("NDF")))/rowSums(pred2.80[1,]),3),
+                       round(rowSums(select(pred2.80[2,], -contains("other")))/rowSums(pred2.80[2,]),3),
+                       round(rowSums(select(pred2.80[3,], -contains("US")))/rowSums(pred2.80[3,]),3))))
+colnames(mc2) = c("NDF","other","US")
+rownames(mc2) = c("50%","80%")
+mc2
+```
+
+```{r}
+outpred3 = predict(m3,type="probs",newdata=f3)
+predint3 = CategoryPredInterval(outpred3,labels=c("NDF","other","US"))
+print(table(f3$country_destination,predint3$pred50))
+predint2 = CategoryPredInterval(outpred3,labels=c("NDF","other","US"))
+print(table(f3$country_destination,predint3$pred80))
+
+pred3.50 = as.data.frame.matrix(table(f3$country_destination,predint3$pred50)) 
+pred3.80 = as.data.frame.matrix(table(f3$country_destination,predint3$pred80)) 
+mc3 = data.frame(rbind(cbind(round(rowSums(select(pred3.50[1,], -contains("NDF")))/rowSums(pred3.50[1,]),3),
+                       round(rowSums(select(pred3.50[2,], -contains("other")))/rowSums(pred3.50[2,]),3),
+                       round(rowSums(select(pred3.50[3,], -contains("US")))/rowSums(pred3.50[3,]),3)),
+                 cbind(round(rowSums(select(pred3.80[1,], -contains("NDF")))/rowSums(pred3.80[1,]),3),
+                       round(rowSums(select(pred3.80[2,], -contains("other")))/rowSums(pred3.80[2,]),3),
+                       round(rowSums(select(pred3.80[3,], -contains("US")))/rowSums(pred3.80[3,]),3))))
+colnames(mc3) = c("NDF","other","US")
+rownames(mc3) = c("50%","80%")
+mc3
+```
+
+```{r}
+outpred4 = predict(m4,type="probs",newdata=f4)
+predint4 = CategoryPredInterval(outpred4,labels=c("NDF","other","US"))
+print(table(f4$country_destination,predint4$pred50))
+predint4 = CategoryPredInterval(outpred4,labels=c("NDF","other","US"))
+print(table(f4$country_destination,predint4$pred80))
+
+pred4.50 = as.data.frame.matrix(table(f4$country_destination,predint4$pred50)) 
+pred4.80 = as.data.frame.matrix(table(f4$country_destination,predint4$pred80)) 
+mc4 = data.frame(rbind(cbind(round(rowSums(select(pred4.50[1,], -contains("NDF")))/rowSums(pred4.50[1,]),3),
+                       round(rowSums(select(pred4.50[2,], -contains("other")))/rowSums(pred4.50[2,]),3),
+                       round(rowSums(select(pred4.50[3,], -contains("US")))/rowSums(pred4.50[3,]),3)),
+                 cbind(round(rowSums(select(pred4.80[1,], -contains("NDF")))/rowSums(pred4.80[1,]),3),
+                       round(rowSums(select(pred4.80[2,], -contains("other")))/rowSums(pred4.80[2,]),3),
+                       round(rowSums(select(pred4.80[3,], -contains("US")))/rowSums(pred4.80[3,]),3))))
+colnames(mc4) = c("NDF","other","US")
+rownames(mc4) = c("50%","80%")
+mc4
+```
+
+```{r}
+outpred5 = predict(m5,type="probs",newdata=f5)
+predint5 = CategoryPredInterval(outpred5,labels=c("NDF","other","US"))
+print(table(f5$country_destination,predint5$pred50))
+predint5 = CategoryPredInterval(outpred5,labels=c("NDF","other","US"))
+print(table(f5$country_destination,predint5$pred80))
+
+pred5.50 = as.data.frame.matrix(table(f5$country_destination,predint5$pred50)) 
+pred5.80 = as.data.frame.matrix(table(f5$country_destination,predint5$pred80)) 
+mc5 = data.frame(rbind(cbind(round(rowSums(select(pred5.50[1,], -contains("NDF")))/rowSums(pred5.50[1,]),3),
+                       round(rowSums(select(pred5.50[2,], -contains("other")))/rowSums(pred5.50[2,]),3),
+                       round(rowSums(select(pred5.50[3,], -contains("US")))/rowSums(pred5.50[3,]),3)),
+                 cbind(round(rowSums(select(pred5.80[1,], -contains("NDF")))/rowSums(pred5.80[1,]),3),
+                       round(rowSums(select(pred5.80[2,], -contains("other")))/rowSums(pred5.80[2,]),3),
+                       round(rowSums(select(pred5.80[3,], -contains("US")))/rowSums(pred5.80[3,]),3))))
+colnames(mc5) = c("NDF","other","US")
+rownames(mc5) = c("50%","80%")
+mc5
+```
+
+```{r}
+# full model
+# 50%
+f150 = round(sum(rowSums(select(pred1.50[1,], -contains("NDF"))),
+          rowSums(select(pred1.50[2,], -contains("other"))),
+          rowSums(select(pred1.50[3,], -contains("US"))))/sum(pred1.50),3)
+f250 = round(sum(rowSums(select(pred2.50[1,], -contains("NDF"))),
+          rowSums(select(pred2.50[2,], -contains("other"))),
+          rowSums(select(pred2.50[3,], -contains("US"))))/sum(pred2.50),3)
+f350 = round(sum(rowSums(select(pred3.50[1,], -contains("NDF"))),
+          rowSums(select(pred3.50[2,], -contains("other"))),
+          rowSums(select(pred3.50[3,], -contains("US"))))/sum(pred3.50),3)
+f450 = round(sum(rowSums(select(pred4.50[1,], -contains("NDF"))),
+          rowSums(select(pred4.50[2,], -contains("other"))),
+          rowSums(select(pred4.50[3,], -contains("US"))))/sum(pred4.50),3)
+f550 = round(sum(rowSums(select(pred5.50[1,], -contains("NDF"))),
+          rowSums(select(pred5.50[2,], -contains("other"))),
+          rowSums(select(pred5.50[3,], -contains("US"))))/sum(pred5.50),3)
+avg50 = round(mean(f150,f250,f350,f450,f550),3)
+mc50 = data.frame(rbind(f150,f250,f350,f450,f550,avg50))
+colnames(mc50) = "full_50"
+rownames(mc50) = c("Fold 1","Fold 2","Fold 3","Fold 4","Fold 5", "Avg")
+mc50
+# 80%
+f180 = round(sum(rowSums(select(pred1.80[1,], -contains("NDF"))),
+          rowSums(select(pred1.80[2,], -contains("other"))),
+          rowSums(select(pred1.80[3,], -contains("US"))))/sum(pred1.80),3)
+f280 = round(sum(rowSums(select(pred2.80[1,], -contains("NDF"))),
+          rowSums(select(pred2.80[2,], -contains("other"))),
+          rowSums(select(pred2.80[3,], -contains("US"))))/sum(pred2.80),3)
+f380 = round(sum(rowSums(select(pred3.80[1,], -contains("NDF"))),
+          rowSums(select(pred3.80[2,], -contains("other"))),
+          rowSums(select(pred3.80[3,], -contains("US"))))/sum(pred3.80),3)
+f480 = round(sum(rowSums(select(pred4.80[1,], -contains("NDF"))),
+          rowSums(select(pred4.80[2,], -contains("other"))),
+          rowSums(select(pred4.80[3,], -contains("US"))))/sum(pred4.80),3)
+f580 = round(sum(rowSums(select(pred5.80[1,], -contains("NDF"))),
+          rowSums(select(pred5.80[2,], -contains("other"))),
+          rowSums(select(pred5.80[3,], -contains("US"))))/sum(pred5.80),3)
+avg80 = round(mean(f180,f280,f380,f480,f580),3)
+mc80 = data.frame(rbind(f180,f280,f380,f480,f580,avg80))
+colnames(mc80) = "full_80"
+rownames(mc80) = c("Fold 1","Fold 2","Fold 3","Fold 4","Fold 5", "Avg")
+mc80
+```
+
+#### Training on the Subsetted Model
+
+##### Used stepwise AIC to Find the Subsetted Model
+
+```{r}
+# Chose m5 as this model performed the best, determined by # the lowest AIC value
+step(m5)
+```
+
+```{r}
+sm1 = nnet::multinom(country_destination ~ . -first_affiliate_tracked, data = rbind(f2,f3,f4,f5))
+summary(sm1)
+sm2 = nnet::multinom(country_destination ~ . -first_affiliate_tracked, data = rbind(f1,f3,f4,f5))
+summary(sm2)
+sm3 = nnet::multinom(country_destination ~ . -first_affiliate_tracked, data = rbind(f1,f2,f4,f5))
+summary(sm3)
+sm4 = nnet::multinom(country_destination ~ . -first_affiliate_tracked, data = rbind(f1,f2,f3,f5))
+summary(sm4)
+sm5 = nnet::multinom(country_destination ~ . -first_affiliate_tracked, data = rbind(f1,f2,f3,f4))
+summary(sm5)
+```
+
+##### Holdout Set 50% and 80% Prediction Intervals 
+
+```{r}
+soutpred1 = predict(sm1,type="probs",newdata=f1)
+spredint1 = CategoryPredInterval(soutpred1,labels=c("NDF","other","US"))
+print(table(f1$country_destination,spredint1$pred50))
+print(table(f1$country_destination,spredint1$pred80))
+
+spred1.50 = as.data.frame.matrix(table(f1$country_destination,spredint1$pred50)) 
+spred1.80 = as.data.frame.matrix(table(f1$country_destination,spredint1$pred80)) 
+smc1 = data.frame(rbind(cbind(round(rowSums(select(spred1.50[1,], -contains("NDF")))/rowSums(spred1.50[1,]),3),
+                       round(rowSums(select(spred1.50[2,], -contains("other")))/rowSums(spred1.50[2,]),3),
+                       round(rowSums(select(spred1.50[3,], -contains("US")))/rowSums(spred1.50[3,]),3)),
+                 cbind(round(rowSums(select(spred1.80[1,], -contains("NDF")))/rowSums(spred1.80[1,]),3),
+                       round(rowSums(select(spred1.80[2,], -contains("other")))/rowSums(spred1.80[2,]),3),
+                       round(rowSums(select(spred1.80[3,], -contains("US")))/rowSums(spred1.80[3,]),3))))
+colnames(smc1) = c("NDF","other","US")
+rownames(smc1) = c("50%","80%")
+
+soutpred2 = predict(sm2,type="probs",newdata=f2)
+spredint2 = CategoryPredInterval(soutpred2,labels=c("NDF","other","US"))
+print(table(f2$country_destination,spredint2$pred50))
+print(table(f2$country_destination,spredint2$pred80))
+
+spred2.50 = as.data.frame.matrix(table(f2$country_destination,spredint2$pred50)) 
+spred2.80 = as.data.frame.matrix(table(f2$country_destination,spredint2$pred80)) 
+smc2 = data.frame(rbind(cbind(round(rowSums(select(spred2.50[1,], -contains("NDF")))/rowSums(spred2.50[1,]),3),
+                       round(rowSums(select(spred2.50[2,], -contains("other")))/rowSums(spred2.50[2,]),3),
+                       round(rowSums(select(spred2.50[3,], -contains("US")))/rowSums(spred2.50[3,]),3)),
+                 cbind(round(rowSums(select(spred2.80[1,], -contains("NDF")))/rowSums(spred2.80[1,]),3),
+                       round(rowSums(select(spred2.80[2,], -contains("other")))/rowSums(spred2.80[2,]),3),
+                       round(rowSums(select(spred2.80[3,], -contains("US")))/rowSums(spred2.80[3,]),3))))
+colnames(smc2) = c("NDF","other","US")
+rownames(smc2) = c("50%","80%")
+
+soutpred3 = predict(m3,type="probs",newdata=f3)
+spredint3 = CategoryPredInterval(soutpred3,labels=c("NDF","other","US"))
+print(table(f3$country_destination,spredint3$pred50))
+print(table(f3$country_destination,spredint3$pred80))
+
+spred3.50 = as.data.frame.matrix(table(f3$country_destination,spredint3$pred50)) 
+spred3.80 = as.data.frame.matrix(table(f3$country_destination,spredint3$pred80)) 
+smc3 = data.frame(rbind(cbind(round(rowSums(select(spred3.50[1,], -contains("NDF")))/rowSums(spred3.50[1,]),3),
+                       round(rowSums(select(spred3.50[2,], -contains("other")))/rowSums(spred3.50[2,]),3),
+                       round(rowSums(select(spred3.50[3,], -contains("US")))/rowSums(spred3.50[3,]),3)),
+                 cbind(round(rowSums(select(spred3.80[1,], -contains("NDF")))/rowSums(spred3.80[1,]),3),
+                       round(rowSums(select(spred3.80[2,], -contains("other")))/rowSums(spred3.80[2,]),3),
+                       round(rowSums(select(spred3.80[3,], -contains("US")))/rowSums(spred3.80[3,]),3))))
+colnames(smc3) = c("NDF","other","US")
+rownames(smc3) = c("50%","80%")
+
+soutpred4 = predict(sm4,type="probs",newdata=f4)
+spredint4 = CategoryPredInterval(soutpred4,labels=c("NDF","other","US"))
+print(table(f4$country_destination,spredint4$pred50))
+print(table(f4$country_destination,spredint4$pred80))
+
+spred4.50 = as.data.frame.matrix(table(f4$country_destination,spredint4$pred50)) 
+spred4.80 = as.data.frame.matrix(table(f4$country_destination,spredint4$pred80)) 
+smc4 = data.frame(rbind(cbind(round(rowSums(select(spred4.50[1,], -contains("NDF")))/rowSums(spred4.50[1,]),3),
+                       round(rowSums(select(spred4.50[2,], -contains("other")))/rowSums(spred4.50[2,]),3),
+                       round(rowSums(select(spred4.50[3,], -contains("US")))/rowSums(spred4.50[3,]),3)),
+                 cbind(round(rowSums(select(spred4.80[1,], -contains("NDF")))/rowSums(spred4.80[1,]),3),
+                       round(rowSums(select(spred4.80[2,], -contains("other")))/rowSums(spred4.80[2,]),3),
+                       round(rowSums(select(spred4.80[3,], -contains("US")))/rowSums(spred4.80[3,]),3))))
+colnames(smc4) = c("NDF","other","US")
+rownames(smc4) = c("50%","80%")
+
+soutpred5 = predict(m5,type="probs",newdata=f5)
+spredint5 = CategoryPredInterval(soutpred5,labels=c("NDF","other","US"))
+print(table(f5$country_destination,spredint5$pred50))
+print(table(f5$country_destination,spredint5$pred80))
+
+spred5.50 = as.data.frame.matrix(table(f5$country_destination,spredint5$pred50)) 
+spred5.80 = as.data.frame.matrix(table(f5$country_destination,spredint5$pred80)) 
+smc5 = data.frame(rbind(cbind(round(rowSums(select(spred5.50[1,], -contains("NDF")))/rowSums(spred5.50[1,]),3),
+                       round(rowSums(select(spred5.50[2,], -contains("other")))/rowSums(spred5.50[2,]),3),
+                       round(rowSums(select(spred5.50[3,], -contains("US")))/rowSums(spred5.50[3,]),3)),
+                 cbind(round(rowSums(select(spred5.80[1,], -contains("NDF")))/rowSums(spred5.80[1,]),3),
+                       round(rowSums(select(spred5.80[2,], -contains("other")))/rowSums(spred5.80[2,]),3),
+                       round(rowSums(select(spred5.80[3,], -contains("US")))/rowSums(spred5.80[3,]),3))))
+colnames(smc5) = c("NDF","other","US")
+rownames(smc5) = c("50%","80%")
+
+# full model
+# 50%
+sf150 = round(sum(rowSums(select(spred1.50[1,], -contains("NDF"))),
+          rowSums(select(spred1.50[2,], -contains("other"))),
+          rowSums(select(spred1.50[3,], -contains("US"))))/sum(spred1.50),3)
+sf250 = round(sum(rowSums(select(spred2.50[1,], -contains("NDF"))),
+          rowSums(select(spred2.50[2,], -contains("other"))),
+          rowSums(select(spred2.50[3,], -contains("US"))))/sum(spred2.50),3)
+sf350 = round(sum(rowSums(select(spred3.50[1,], -contains("NDF"))),
+          rowSums(select(spred3.50[2,], -contains("other"))),
+          rowSums(select(spred3.50[3,], -contains("US"))))/sum(spred3.50),3)
+sf450 = round(sum(rowSums(select(spred4.50[1,], -contains("NDF"))),
+          rowSums(select(spred4.50[2,], -contains("other"))),
+          rowSums(select(spred4.50[3,], -contains("US"))))/sum(spred4.50),3)
+sf550 = round(sum(rowSums(select(spred5.50[1,], -contains("NDF"))),
+          rowSums(select(spred5.50[2,], -contains("other"))),
+          rowSums(select(spred5.50[3,], -contains("US"))))/sum(spred5.50),3)
+savg50 = round(mean(sf150,sf250,sf350,sf450,sf550),3)
+smc50 = data.frame(rbind(sf150,sf250,sf350,sf450,sf550,savg50))
+colnames(smc50) = "sub_50"
+rownames(smc50) = c("Fold 1","Fold 2","Fold 3","Fold 4","Fold 5", "Avg")
+smc50
+# 80%
+sf180 = round(sum(rowSums(select(spred1.80[1,], -contains("NDF"))),
+          rowSums(select(spred1.80[2,], -contains("other"))),
+          rowSums(select(spred1.80[3,], -contains("US"))))/sum(spred1.80),3)
+sf280 = round(sum(rowSums(select(spred2.80[1,], -contains("NDF"))),
+          rowSums(select(spred2.80[2,], -contains("other"))),
+          rowSums(select(spred2.80[3,], -contains("US"))))/sum(spred2.80),3)
+sf380 = round(sum(rowSums(select(spred3.80[1,], -contains("NDF"))),
+          rowSums(select(spred3.80[2,], -contains("other"))),
+          rowSums(select(spred3.80[3,], -contains("US"))))/sum(spred3.80),3)
+sf480 = round(sum(rowSums(select(spred4.80[1,], -contains("NDF"))),
+          rowSums(select(spred4.80[2,], -contains("other"))),
+          rowSums(select(spred4.80[3,], -contains("US"))))/sum(spred4.80),3)
+sf580 = round(sum(rowSums(select(spred5.80[1,], -contains("NDF"))),
+          rowSums(select(spred5.80[2,], -contains("other"))),
+          rowSums(select(spred5.80[3,], -contains("US"))))/sum(spred5.80),3)
+savg80 = round(mean(sf180,sf280,sf380,sf480,sf580),3)
+smc80 = data.frame(rbind(sf180,sf280,sf380,sf480,sf580,savg80))
+colnames(smc80) = "sub_80"
+rownames(smc80) = c("Fold 1","Fold 2","Fold 3","Fold 4","Fold 5", "Avg")
+smc80
+```
+
+### Undersampling 
+
+```{r}
+# undersampling
+other1 = filter(rbind(f2,f3,f4,f5),rbind(f2,f3,f4,f5)$country_destination=="other")
+uus1 = filter(rbind(f2,f3,f4,f5),rbind(f2,f3,f4,f5)$country_destination=="US")
+undf1 = filter(rbind(f2,f3,f4,f5),rbind(f2,f3,f4,f5)$country_destination=="NDF")
+train1 = rbind(uus1[sample(nrow(uus1),size=nrow(other1)),],other1,undf1[sample(nrow(undf1),size=nrow(other1)),])
+
+other2 = filter(rbind(f1,f3,f4,f5),rbind(f1,f3,f4,f5)$country_destination=="other")
+uus2 = filter(rbind(f1,f3,f4,f5),rbind(f1,f3,f4,f5)$country_destination=="US")
+undf2 = filter(rbind(f1,f3,f4,f5),rbind(f1,f3,f4,f5)$country_destination=="NDF")
+train2 = rbind(uus2[sample(nrow(uus2),size=nrow(other2)),],other2,undf2[sample(nrow(undf2),size=nrow(other2)),])
+
+other3 = filter(rbind(f1,f2,f4,f5),rbind(f1,f2,f4,f5)$country_destination=="other")
+uus3 = filter(rbind(f1,f2,f4,f5),rbind(f1,f2,f4,f5)$country_destination=="US")
+undf3 = filter(rbind(f1,f2,f4,f5),rbind(f1,f2,f4,f5)$country_destination=="NDF")
+train3 = rbind(uus3[sample(nrow(uus3),size=nrow(other3)),],other3,undf3[sample(nrow(undf3),size=nrow(other3)),])
+
+other4 = filter(rbind(f1,f2,f3,f5),rbind(f1,f2,f3,f5)$country_destination=="other")
+uus4 = filter(rbind(f1,f2,f3,f5),rbind(f1,f2,f3,f5)$country_destination=="US")
+undf4 = filter(rbind(f1,f2,f3,f5),rbind(f1,f2,f3,f5)$country_destination=="NDF")
+train4 = rbind(uus4[sample(nrow(uus4),size=nrow(other4)),],other4,undf4[sample(nrow(undf4),size=nrow(other4)),])
+
+other5 = filter(rbind(f1,f2,f3,f4),rbind(f1,f2,f3,f4)$country_destination=="other")
+uus5 = filter(rbind(f1,f2,f3,f4),rbind(f1,f2,f3,f4)$country_destination=="US")
+undf5 = filter(rbind(f1,f2,f3,f4),rbind(f1,f2,f3,f4)$country_destination=="NDF")
+train5 = rbind(uus5[sample(nrow(uus5),size=nrow(other5)),],other5,undf5[sample(nrow(undf5),size=nrow(other5)),])
+```
+
+#### Training the Subsetted Model on Undersampled Data
+
+```{r}
+um1 = nnet::multinom(country_destination ~ . -first_affiliate_tracked, data = train1)
+summary(um1)
+um2 = nnet::multinom(country_destination ~ . -first_affiliate_tracked, data = train2)
+summary(um2)
+um3 = nnet::multinom(country_destination ~ . -first_affiliate_tracked, data = train3)
+summary(um3)
+um4 = nnet::multinom(country_destination ~ . -first_affiliate_tracked, data = train4)
+summary(um4)
+um5 = nnet::multinom(country_destination ~ . -first_affiliate_tracked, data = train5)
+summary(um5)
+```
+
+##### Holdout Set 50% and 80% Prediction Intervals 
+
+```{r}
+uoutpred1 = predict(um1,type="probs",newdata=f1)
+upredint1 = CategoryPredInterval(uoutpred1,labels=c("NDF","other","US"))
+print(table(f1$country_destination,upredint1$pred50))
+print(table(f1$country_destination,upredint1$pred80))
+
+upred1.50 = as.data.frame.matrix(table(f1$country_destination,upredint1$pred50)) 
+upred1.80 = as.data.frame.matrix(table(f1$country_destination,upredint1$pred80)) 
+umc1 = data.frame(rbind(cbind(round(rowSums(select(upred1.50[1,], -contains("NDF")))/rowSums(upred1.50[1,]),3),
+                       round(rowSums(select(upred1.50[2,], -contains("other")))/rowSums(upred1.50[2,]),3),
+                       round(rowSums(select(upred1.50[3,], -contains("US")))/rowSums(upred1.50[3,]),3)),
+                 cbind(round(rowSums(select(upred1.80[1,], -contains("NDF")))/rowSums(upred1.80[1,]),3),
+                       round(rowSums(select(upred1.80[2,], -contains("other")))/rowSums(upred1.80[2,]),3),
+                       round(rowSums(select(upred1.80[3,], -contains("US")))/rowSums(upred1.80[3,]),3))))
+colnames(umc1) = c("NDF","other","US")
+rownames(umc1) = c("50%","80%")
+
+uoutpred2 = predict(um2,type="probs",newdata=f2)
+upredint2 = CategoryPredInterval(uoutpred2,labels=c("NDF","other","US"))
+print(table(f2$country_destination,upredint2$pred50))
+print(table(f2$country_destination,upredint2$pred80))
+
+upred2.50 = as.data.frame.matrix(table(f2$country_destination,upredint2$pred50)) 
+upred2.80 = as.data.frame.matrix(table(f2$country_destination,upredint2$pred80)) 
+umc2 = data.frame(rbind(cbind(round(rowSums(select(upred2.50[1,], -contains("NDF")))/rowSums(upred2.50[1,]),3),
+                       round(rowSums(select(upred2.50[2,], -contains("other")))/rowSums(upred2.50[2,]),3),
+                       round(rowSums(select(upred2.50[3,], -contains("US")))/rowSums(upred2.50[3,]),3)),
+                 cbind(round(rowSums(select(upred2.80[1,], -contains("NDF")))/rowSums(upred2.80[1,]),3),
+                       round(rowSums(select(upred2.80[2,], -contains("other")))/rowSums(upred2.80[2,]),3),
+                       round(rowSums(select(upred2.80[3,], -contains("US")))/rowSums(upred2.80[3,]),3))))
+colnames(umc2) = c("NDF","other","US")
+rownames(umc2) = c("50%","80%")
+
+uoutpred3 = predict(um3,type="probs",newdata=f3)
+upredint3 = CategoryPredInterval(uoutpred3,labels=c("NDF","other","US"))
+print(table(f3$country_destination,upredint3$pred50))
+print(table(f3$country_destination,upredint3$pred80))
+
+upred3.50 = as.data.frame.matrix(table(f3$country_destination,upredint3$pred50)) 
+upred3.80 = as.data.frame.matrix(table(f3$country_destination,upredint3$pred80)) 
+umc3 = data.frame(rbind(cbind(round(rowSums(select(upred3.50[1,], -contains("NDF")))/rowSums(upred3.50[1,]),3),
+                       round(rowSums(select(upred3.50[2,], -contains("other")))/rowSums(upred3.50[2,]),3),
+                       round(rowSums(select(upred3.50[3,], -contains("US")))/rowSums(upred3.50[3,]),3)),
+                 cbind(round(rowSums(select(upred3.80[1,], -contains("NDF")))/rowSums(upred3.80[1,]),3),
+                       round(rowSums(select(upred3.80[2,], -contains("other")))/rowSums(upred3.80[2,]),3),
+                       round(rowSums(select(upred3.80[3,], -contains("US")))/rowSums(upred3.80[3,]),3))))
+colnames(umc3) = c("NDF","other","US")
+rownames(umc3) = c("50%","80%")
+
+uoutpred4 = predict(um4,type="probs",newdata=f4)
+upredint4 = CategoryPredInterval(uoutpred4,labels=c("NDF","other","US"))
+print(table(f4$country_destination,upredint4$pred50))
+print(table(f4$country_destination,upredint4$pred80))
+
+upred4.50 = as.data.frame.matrix(table(f4$country_destination,upredint4$pred50)) 
+upred4.80 = as.data.frame.matrix(table(f4$country_destination,upredint4$pred80)) 
+umc4 = data.frame(rbind(cbind(round(rowSums(select(upred4.50[1,], -contains("NDF")))/rowSums(upred4.50[1,]),3),
+                       round(rowSums(select(upred4.50[2,], -contains("other")))/rowSums(upred4.50[2,]),3),
+                       round(rowSums(select(upred4.50[3,], -contains("US")))/rowSums(upred4.50[3,]),3)),
+                 cbind(round(rowSums(select(upred4.80[1,], -contains("NDF")))/rowSums(upred4.80[1,]),3),
+                       round(rowSums(select(upred4.80[2,], -contains("other")))/rowSums(upred4.80[2,]),3),
+                       round(rowSums(select(upred4.80[3,], -contains("US")))/rowSums(upred4.80[3,]),3))))
+colnames(umc4) = c("NDF","other","US")
+rownames(umc4) = c("50%","80%")
+
+uoutpred5 = predict(m5,type="probs",newdata=f5)
+upredint5 = CategoryPredInterval(uoutpred5,labels=c("NDF","other","US"))
+print(table(f5$country_destination,upredint5$pred50))
+print(table(f5$country_destination,upredint5$pred80))
+
+upred5.50 = as.data.frame.matrix(table(f5$country_destination,upredint5$pred50)) 
+upred5.80 = as.data.frame.matrix(table(f5$country_destination,upredint5$pred80)) 
+umc5 = data.frame(rbind(cbind(round(rowSums(select(upred5.50[1,], -contains("NDF")))/rowSums(upred5.50[1,]),3),
+                       round(rowSums(select(upred5.50[2,], -contains("other")))/rowSums(upred5.50[2,]),3),
+                       round(rowSums(select(upred5.50[3,], -contains("US")))/rowSums(upred5.50[3,]),3)),
+                 cbind(round(rowSums(select(upred5.80[1,], -contains("NDF")))/rowSums(upred5.80[1,]),3),
+                       round(rowSums(select(upred5.80[2,], -contains("other")))/rowSums(upred5.80[2,]),3),
+                       round(rowSums(select(upred5.80[3,], -contains("US")))/rowSums(upred5.80[3,]),3))))
+colnames(umc5) = c("NDF","other","US")
+rownames(umc5) = c("50%","80%")
+
+
+# 50%
+uf150 = round(sum(rowSums(select(upred1.50[1,], -contains("NDF"))),
+          rowSums(select(upred1.50[2,], -contains("other"))),
+          rowSums(select(upred1.50[3,], -contains("US"))))/sum(upred1.50),3)
+uf250 = round(sum(rowSums(select(upred2.50[1,], -contains("NDF"))),
+          rowSums(select(upred2.50[2,], -contains("other"))),
+          rowSums(select(upred2.50[3,], -contains("US"))))/sum(upred2.50),3)
+uf350 = round(sum(rowSums(select(upred3.50[1,], -contains("NDF"))),
+          rowSums(select(upred3.50[2,], -contains("other"))),
+          rowSums(select(upred3.50[3,], -contains("US"))))/sum(upred3.50),3)
+uf450 = round(sum(rowSums(select(upred4.50[1,], -contains("NDF"))),
+          rowSums(select(upred4.50[2,], -contains("other"))),
+          rowSums(select(upred4.50[3,], -contains("US"))))/sum(upred4.50),3)
+uf550 = round(sum(rowSums(select(upred5.50[1,], -contains("NDF"))),
+          rowSums(select(upred5.50[2,], -contains("other"))),
+          rowSums(select(upred5.50[3,], -contains("US"))))/sum(upred5.50),3)
+uavg50 = round(mean(uf150,uf250,uf350,uf450,uf550),3)
+umc50 = data.frame(rbind(uf150,uf250,uf350,uf450,uf550,uavg50))
+colnames(umc50) = "under_50"
+rownames(umc50) = c("Fold 1","Fold 2","Fold 3","Fold 4","Fold 5", "Avg")
+umc50
+# 80%
+uf180 = round(sum(rowSums(select(upred1.80[1,], -contains("NDF"))),
+          rowSums(select(upred1.80[2,], -contains("other"))),
+          rowSums(select(upred1.80[3,], -contains("US"))))/sum(upred1.80),3)
+uf280 = round(sum(rowSums(select(upred2.80[1,], -contains("NDF"))),
+          rowSums(select(upred2.80[2,], -contains("other"))),
+          rowSums(select(upred2.80[3,], -contains("US"))))/sum(upred2.80),3)
+uf380 = round(sum(rowSums(select(upred3.80[1,], -contains("NDF"))),
+          rowSums(select(upred3.80[2,], -contains("other"))),
+          rowSums(select(upred3.80[3,], -contains("US"))))/sum(upred3.80),3)
+uf480 = round(sum(rowSums(select(upred4.80[1,], -contains("NDF"))),
+          rowSums(select(upred4.80[2,], -contains("other"))),
+          rowSums(select(upred4.80[3,], -contains("US"))))/sum(upred4.80),3)
+uf580 = round(sum(rowSums(select(upred5.80[1,], -contains("NDF"))),
+          rowSums(select(upred5.80[2,], -contains("other"))),
+          rowSums(select(upred5.80[3,], -contains("US"))))/sum(upred5.80),3)
+uavg80 = round(mean(uf180,uf280,uf380,uf480,uf580),3)
+umc80 = data.frame(rbind(uf180,uf280,uf380,uf480,uf580,uavg80))
+colnames(umc80) = "under_80"
+rownames(umc80) = c("Fold 1","Fold 2","Fold 3","Fold 4","Fold 5", "Avg")
+umc80
+```
+
+### Oversampling
+
+```{r}
+ndf1 = filter(rbind(f2,f3,f4,f5),rbind(f2,f3,f4,f5)$country_destination=="NDF")
+ous1 = filter(rbind(f2,f3,f4,f5),rbind(f2,f3,f4,f5)$country_destination=="US")
+oother1 = filter(rbind(f2,f3,f4,f5),rbind(f2,f3,f4,f5)$country_destination=="other")
+otrain1 = rbind(ous1[sample(nrow(ous1),size=nrow(ndf1),replace=T),],ndf1,
+               oother1[sample(nrow(oother1),size=nrow(ndf1),replace=T),])
+
+ndf2 = filter(rbind(f1,f3,f4,f5),rbind(f1,f3,f4,f5)$country_destination=="NDF")
+ous2 = filter(rbind(f1,f3,f4,f5),rbind(f1,f3,f4,f5)$country_destination=="US")
+oother2 = filter(rbind(f1,f3,f4,f5),rbind(f1,f3,f4,f5)$country_destination=="other")
+otrain2 = rbind(ous2[sample(nrow(ous2),size=nrow(ndf2),replace=T),],ndf2,
+               oother2[sample(nrow(oother2),size=nrow(ndf2),replace=T),])
+
+ndf3 = filter(rbind(f1,f2,f4,f5),rbind(f1,f2,f4,f5)$country_destination=="NDF")
+ous3 = filter(rbind(f1,f2,f4,f5),rbind(f1,f2,f4,f5)$country_destination=="US")
+oother3 = filter(rbind(f1,f2,f4,f5),rbind(f1,f2,f4,f5)$country_destination=="other")
+otrain3 = rbind(ous3[sample(nrow(ous3),size=nrow(ndf3),replace=T),],ndf3,
+               oother3[sample(nrow(oother3),size=nrow(ndf3),replace=T),])
+
+ndf4 = filter(rbind(f1,f2,f3,f5),rbind(f1,f2,f3,f5)$country_destination=="NDF")
+ous4 = filter(rbind(f1,f2,f3,f5),rbind(f1,f2,f3,f5)$country_destination=="US")
+oother4 = filter(rbind(f1,f2,f3,f5),rbind(f1,f2,f3,f5)$country_destination=="other")
+otrain4 = rbind(ous4[sample(nrow(ous4),size=nrow(ndf4),replace=T),],ndf4,
+               oother4[sample(nrow(oother4),size=nrow(ndf4),replace=T),])
+
+ndf5 = filter(rbind(f1,f2,f3,f4),rbind(f1,f2,f3,f4)$country_destination=="NDF")
+ous5 = filter(rbind(f1,f2,f3,f4),rbind(f1,f2,f3,f4)$country_destination=="US")
+oother5 = filter(rbind(f1,f2,f3,f4),rbind(f1,f2,f3,f4)$country_destination=="other")
+otrain5 = rbind(ous5[sample(nrow(ous5),size=nrow(ndf5),replace=T),],ndf5,
+               oother5[sample(nrow(oother5),size=nrow(ndf5),replace=T),])
+```
+
+#### Training the Subsetted Model on Oversampled Data
+
+```{r}
+om1 = nnet::multinom(country_destination ~ . -first_affiliate_tracked, data = otrain1)
+summary(om1)
+om2 = nnet::multinom(country_destination ~ . -first_affiliate_tracked, data = otrain2)
+summary(om2)
+om3 = nnet::multinom(country_destination ~ . -first_affiliate_tracked, data = otrain3)
+summary(om3)
+om4 = nnet::multinom(country_destination ~ . -first_affiliate_tracked, data = otrain4)
+summary(om4)
+om5 = nnet::multinom(country_destination ~ . -first_affiliate_tracked, data = otrain5)
+summary(om5)
+```
+
+##### Holdout Set 50% and 80% Prediction Intervals 
+
+```{r}
+ooutpred1 = predict(om1,type="probs",newdata=f1)
+opredint1 = CategoryPredInterval(ooutpred1,labels=c("NDF","other","US"))
+print(table(f1$country_destination,opredint1$pred50))
+print(table(f1$country_destination,opredint1$pred80))
+
+opred1.50 = as.data.frame.matrix(table(f1$country_destination,opredint1$pred50)) 
+opred1.80 = as.data.frame.matrix(table(f1$country_destination,opredint1$pred80)) 
+omc1 = data.frame(rbind(cbind(round(rowSums(select(opred1.50[1,], -contains("NDF")))/rowSums(opred1.50[1,]),3),
+                       round(rowSums(select(opred1.50[2,], -contains("other")))/rowSums(opred1.50[2,]),3),
+                       round(rowSums(select(opred1.50[3,], -contains("US")))/rowSums(opred1.50[3,]),3)),
+                 cbind(round(rowSums(select(opred1.80[1,], -contains("NDF")))/rowSums(opred1.80[1,]),3),
+                       round(rowSums(select(opred1.80[2,], -contains("other")))/rowSums(opred1.80[2,]),3),
+                       round(rowSums(select(opred1.80[3,], -contains("US")))/rowSums(opred1.80[3,]),3))))
+colnames(omc1) = c("NDF","other","US")
+rownames(omc1) = c("50%","80%")
+
+ooutpred2 = predict(om2,type="probs",newdata=f2)
+opredint2 = CategoryPredInterval(ooutpred2,labels=c("NDF","other","US"))
+print(table(f2$country_destination,opredint2$pred50))
+print(table(f2$country_destination,opredint2$pred80))
+
+opred2.50 = as.data.frame.matrix(table(f2$country_destination,opredint2$pred50)) 
+opred2.80 = as.data.frame.matrix(table(f2$country_destination,opredint2$pred80)) 
+omc2 = data.frame(rbind(cbind(round(rowSums(select(opred2.50[1,], -contains("NDF")))/rowSums(opred2.50[1,]),3),
+                       round(rowSums(select(opred2.50[2,], -contains("other")))/rowSums(opred2.50[2,]),3),
+                       round(rowSums(select(opred2.50[3,], -contains("US")))/rowSums(opred2.50[3,]),3)),
+                 cbind(round(rowSums(select(opred2.80[1,], -contains("NDF")))/rowSums(opred2.80[1,]),3),
+                       round(rowSums(select(opred2.80[2,], -contains("other")))/rowSums(opred2.80[2,]),3),
+                       round(rowSums(select(opred2.80[3,], -contains("US")))/rowSums(opred2.80[3,]),3))))
+colnames(omc2) = c("NDF","other","US")
+rownames(omc2) = c("50%","80%")
+
+ooutpred3 = predict(om3,type="probs",newdata=f3)
+opredint3 = CategoryPredInterval(ooutpred3,labels=c("NDF","other","US"))
+print(table(f3$country_destination,opredint3$pred50))
+print(table(f3$country_destination,opredint3$pred80))
+
+opred3.50 = as.data.frame.matrix(table(f3$country_destination,opredint3$pred50)) 
+opred3.80 = as.data.frame.matrix(table(f3$country_destination,opredint3$pred80)) 
+omc3 = data.frame(rbind(cbind(round(rowSums(select(opred3.50[1,], -contains("NDF")))/rowSums(opred3.50[1,]),3),
+                       round(rowSums(select(opred3.50[2,], -contains("other")))/rowSums(opred3.50[2,]),3),
+                       round(rowSums(select(opred3.50[3,], -contains("US")))/rowSums(opred3.50[3,]),3)),
+                 cbind(round(rowSums(select(opred3.80[1,], -contains("NDF")))/rowSums(opred3.80[1,]),3),
+                       round(rowSums(select(opred3.80[2,], -contains("other")))/rowSums(opred3.80[2,]),3),
+                       round(rowSums(select(opred3.80[3,], -contains("US")))/rowSums(opred3.80[3,]),3))))
+colnames(omc3) = c("NDF","other","US")
+rownames(omc3) = c("50%","80%")
+
+ooutpred4 = predict(om4,type="probs",newdata=f4)
+opredint4 = CategoryPredInterval(ooutpred4,labels=c("NDF","other","US"))
+print(table(f4$country_destination,opredint4$pred50))
+print(table(f4$country_destination,opredint4$pred80))
+
+opred4.50 = as.data.frame.matrix(table(f4$country_destination,opredint4$pred50)) 
+opred4.80 = as.data.frame.matrix(table(f4$country_destination,opredint4$pred80)) 
+omc4 = data.frame(rbind(cbind(round(rowSums(select(opred4.50[1,], -contains("NDF")))/rowSums(opred4.50[1,]),3),
+                       round(rowSums(select(opred4.50[2,], -contains("other")))/rowSums(opred4.50[2,]),3),
+                       round(rowSums(select(opred4.50[3,], -contains("US")))/rowSums(opred4.50[3,]),3)),
+                 cbind(round(rowSums(select(opred4.80[1,], -contains("NDF")))/rowSums(opred4.80[1,]),3),
+                       round(rowSums(select(opred4.80[2,], -contains("other")))/rowSums(opred4.80[2,]),3),
+                       round(rowSums(select(opred4.80[3,], -contains("US")))/rowSums(opred4.80[3,]),3))))
+colnames(omc4) = c("NDF","other","US")
+rownames(omc4) = c("50%","80%")
+
+ooutpred5 = predict(om5,type="probs",newdata=f5)
+opredint5 = CategoryPredInterval(ooutpred5,labels=c("NDF","other","US"))
+print(table(f5$country_destination,opredint5$pred50))
+print(table(f5$country_destination,opredint5$pred80))
+
+opred5.50 = as.data.frame.matrix(table(f5$country_destination,opredint5$pred50)) 
+opred5.80 = as.data.frame.matrix(table(f5$country_destination,opredint5$pred80)) 
+omc5 = data.frame(rbind(cbind(round(rowSums(select(opred5.50[1,], -contains("NDF")))/rowSums(opred5.50[1,]),3),
+                       round(rowSums(select(opred5.50[2,], -contains("other")))/rowSums(opred5.50[2,]),3),
+                       round(rowSums(select(opred5.50[3,], -contains("US")))/rowSums(opred5.50[3,]),3)),
+                 cbind(round(rowSums(select(opred5.80[1,], -contains("NDF")))/rowSums(opred5.80[1,]),3),
+                       round(rowSums(select(opred5.80[2,], -contains("other")))/rowSums(opred5.80[2,]),3),
+                       round(rowSums(select(opred5.80[3,], -contains("US")))/rowSums(opred5.80[3,]),3))))
+colnames(omc5) = c("NDF","other","US")
+rownames(omc5) = c("50%","80%")
+
+
+# 50%
+of150 = round(sum(rowSums(select(opred1.50[1,], -contains("NDF"))),
+          rowSums(select(opred1.50[2,], -contains("other"))),
+          rowSums(select(opred1.50[3,], -contains("US"))))/sum(opred1.50),3)
+of250 = round(sum(rowSums(select(opred2.50[1,], -contains("NDF"))),
+          rowSums(select(opred2.50[2,], -contains("other"))),
+          rowSums(select(opred2.50[3,], -contains("US"))))/sum(opred2.50),3)
+of350 = round(sum(rowSums(select(opred3.50[1,], -contains("NDF"))),
+          rowSums(select(opred3.50[2,], -contains("other"))),
+          rowSums(select(opred3.50[3,], -contains("US"))))/sum(opred3.50),3)
+of450 = round(sum(rowSums(select(opred4.50[1,], -contains("NDF"))),
+          rowSums(select(opred4.50[2,], -contains("other"))),
+          rowSums(select(opred4.50[3,], -contains("US"))))/sum(opred4.50),3)
+of550 = round(sum(rowSums(select(opred5.50[1,], -contains("NDF"))),
+          rowSums(select(opred5.50[2,], -contains("other"))),
+          rowSums(select(opred5.50[3,], -contains("US"))))/sum(opred5.50),3)
+oavg50 = round(mean(of150,of250,of350,of450,of550),3)
+omc50 = data.frame(rbind(of150,of250,of350,of450,of550,oavg50))
+colnames(omc50) = "over_50"
+rownames(omc50) = c("Fold 1","Fold 2","Fold 3","Fold 4","Fold 5", "Avg")
+omc50
+# 80%
+of180 = round(sum(rowSums(select(opred1.80[1,], -contains("NDF"))),
+          rowSums(select(opred1.80[2,], -contains("other"))),
+          rowSums(select(opred1.80[3,], -contains("US"))))/sum(opred1.80),3)
+of280 = round(sum(rowSums(select(opred2.80[1,], -contains("NDF"))),
+          rowSums(select(opred2.80[2,], -contains("other"))),
+          rowSums(select(opred2.80[3,], -contains("US"))))/sum(opred2.80),3)
+of380 = round(sum(rowSums(select(opred3.80[1,], -contains("NDF"))),
+          rowSums(select(opred3.80[2,], -contains("other"))),
+          rowSums(select(opred3.80[3,], -contains("US"))))/sum(opred3.80),3)
+of480 = round(sum(rowSums(select(opred4.80[1,], -contains("NDF"))),
+          rowSums(select(opred4.80[2,], -contains("other"))),
+          rowSums(select(opred4.80[3,], -contains("US"))))/sum(opred4.80),3)
+of580 = round(sum(rowSums(select(opred5.80[1,], -contains("NDF"))),
+          rowSums(select(opred5.80[2,], -contains("other"))),
+          rowSums(select(opred5.80[3,], -contains("US"))))/sum(opred5.80),3)
+oavg80 = round(mean(of180,of280,of380,of480,of580),3)
+omc80 = data.frame(rbind(of180,of280,of380,of480,of580,oavg80))
+colnames(omc80) = "over_80"
+rownames(omc80) = c("Fold 1","Fold 2","Fold 3","Fold 4","Fold 5", "Avg")
+omc80
+```
+
+### Misclassification Rate of Each Model for 50% and 80% Prediction Intervals
+
+```{r}
+cbind(mc50,smc50,umc50,omc50)
+cbind(mc80,smc80,umc80,omc80)
+```
+
