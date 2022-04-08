@@ -11,7 +11,7 @@ File description:
 
 # Load Data and Library
 ```{r Load Data}
-load(paste0(here::here(), "/Data/airbnb.RData"))
+load(paste0(here::here(), "/Data/airbnb_cleaned.RData"))
 source("helper_function.R")
 source("modeling_functions.R")
 set.seed(2023)
@@ -21,6 +21,9 @@ library(tidyverse)
 library(caret)
 library(randomForest)
 library(pROC)
+
+airbnb_data <- airbnb_cleaned
+rm(airbnb_cleaned)
 ```
 
 
@@ -28,25 +31,28 @@ library(pROC)
 ```{r}
 # Each model take about 30 mins to run, 2 hr to run the whole thing
 rf_full_result <- rf_5fold_cross(airbnb_data, folds, type ="full")
-rf_sub_result <- rf_5fold_cross(airbnb_data, folds, type ="sub")
+# rf_sub_result <- rf_5fold_cross(airbnb_data, folds, type ="sub")
 rf_over_full_result <- rf_5fold_cross(airbnb_data, folds, type ="over")
-rf_over_under_result <- rf_5fold_cross(airbnb_data, folds, type ="under")
+rf_under_full_result <- rf_5fold_cross(airbnb_data, folds, type ="under")
+
+save(rf_full_result, rf_under_full_result, rf_over_full_result,
+     file = paste0(here::here(), "/Data/rf_model_objects.RData"))
 ```
 
 
 ```{r Get Misclassification Rate}
-#  load(paste0(here::here(), "/Data/rf_model_results.RData"))
-mis_class_sub <- sapply(rf_sub_result, "[", "mis_class")
+load(paste0(here::here(), "/Data/rf_model_objects.RData"))
+# mis_class_sub <- sapply(rf_sub_result, "[", "mis_class")
 mis_class_ful <- sapply(rf_full_result, "[", "mis_class")
 mis_class_ful_under <- sapply(rf_under_full_result, "[", "mis_class")
 mis_class_ful_over <- sapply(rf_over_full_result, "[", "mis_class")
 
 rf_misclass <- data.frame(full_50 = sapply(mis_class_ful, "[", "pred50") %>% unlist(),
-                          sub_50 = sapply(mis_class_sub, "[", "pred50") %>% unlist(),
+                          # sub_50 = sapply(mis_class_sub, "[", "pred50") %>% unlist(),
                           under_50 = sapply(mis_class_ful_under, "[", "pred50") %>% unlist(),
                           over_50 = sapply(mis_class_ful_over, "[", "pred50") %>% unlist(),
                           full_80 = sapply(mis_class_ful, "[", "pred80") %>% unlist(),
-                          sub_80 = sapply(mis_class_sub, "[", "pred80") %>% unlist(),
+                          # sub_80 = sapply(mis_class_sub, "[", "pred80") %>% unlist(),
                           under_80 = sapply(mis_class_ful_under, "[", "pred80") %>% unlist(),
                           over_80 = sapply(mis_class_ful_over, "[", "pred80") %>% unlist()
                           )
