@@ -6,16 +6,20 @@ editor_options:
   chunk_output_type: inline
 ---
 
+This notebook contains the modeling process of naive Bayes. Starting from a full model, we then moved to fit a subset model after removing highly correlated variables. Besides, we also trying two models with the oversampled and undersampled data respetively using a subset of variables from the second model.   
 
+Each model is evaluated with five-fold misclassification rate based on 50% and 80% prediction interval. 
 
 ```{r Set up Package}
 suppressPackageStartupMessages(library(tidyverse))
 suppressForeignCheck(library(e1071))
 suppressPackageStartupMessages(library(caret))
+suppressPackageStartupMessages(library(GoodmanKruskal))
+suppressPackageStartupMessages(library(pROC))
 ```
 
 
-```{r Source wrapper function}
+```{r Source the wrapper functions}
 source(paste0(here::here(), '/Code/helper_function.R'))
 source(paste0(here::here(), '/Code/modeling_function.R'))
 ```
@@ -23,15 +27,16 @@ source(paste0(here::here(), '/Code/modeling_function.R'))
 
 ```{r Load Data}
 # Load the dataset
-load("~/Desktop/Academic/STAT447/Airbnb-New-User-Bookings/Data/airbnb.Rdata")
+load("~/Desktop/Academic/STAT447/Airbnb-New-User-Bookings/Data/airbnb_cleaned.Rdata")
 
-# rename the dataset to avoid misunderstanding 
+# Rename the dataset to avoid misunderstanding 
 airbnb_data <- airbnb_train
 
-# move the response variale to the last position for convenience
+# move the response variable to the last position for convenience
 airbnb_data <-
   airbnb_data %>% relocate(country_destination, .after = 'log_age')
 ```
+
 
 
 # Naive Bayes Model 
@@ -50,56 +55,63 @@ By some literature searching, we found that there are two sets of variables that
 * signup_method  
 
 
-and the second set is  
+the second set is  
 * first_affiliate_tracked  
 * affiliate_channel  
 * affiliate_provider  
 
-Ref: https://www.analyticsvidhya.com/blog/2021/06/decoding-the-chi-square-test%E2%80%8A-%E2%80%8Ause-along-with-implementation-and-visualization/#:~:text=Chi%2DSquare%20test%20is%20a,categorical%20variables%20in%20our%20data.
+the third set is  
+* first_browser  
+* first_device_type  
 
-```{r Check Correlation of signup-related variables}
-chisq.test(airbnb_data$signup_app, airbnb_data$signup_flow)
-chisq.test(airbnb_data$signup_app, airbnb_data$signup_method)
-chisq.test(airbnb_data$signup_flow, airbnb_data$signup_method)
+We check the association between categircal variables with the Goodman-kruskal tau. 
+
+```{r CorrPlot of all categorical predictors}
+# filter all categircal predictors 
+airbnb_data_cat<- airbnb_data %>%
+  select(c(3:11))
+
+# check the correlation with with the Goodman-kruskal tau
+GKmat <- GKtauDataframe(airbnb_data_cat)
+plot(GKmat, diagSize = 0.8)
 ```
 
-```{r Check Correlation of signup-related variables}
-chisq.test(airbnb_data$first_affiliate_tracked, airbnb_data$affiliate_channel)
-chisq.test(airbnb_data$first_affiliate_tracked, airbnb_data$affiliate_provider)
-chisq.test(airbnb_data$affiliate_channel, airbnb_data$affiliate_provider)
+```{r CorrPlot of a subset of  categorical predictors}
+# remove highly correlated predictors 
+airbnb_data_sub <- airbnb_data %>% 
+  select(-c(signup_app, signup_flow, affiliate_channel, affiliate_provider, first_device_type))
+
+# re-calculate the Goodman-kruskal tau
+airbnb_data_sub_cat <- 
+  airbnb_data_sub %>% select(c(3:7))
+GKmat_sub <- GKtauDataframe(airbnb_data_sub_cat)
+plot(GKmat_sub, diagSize = 0.8)
 ```
 
-Therefore we will drop the following variables:  
+
+Therefore we will drop the following variables for the substted model:    
 * signup_app  
 * signup_flow  
 * affiliate_channel  
 * affiliate_provider  
+* first_device_type   
 
-```{r}
-airbnb_data_sub <- airbnb_data %>% 
-  select(-c(signup_app, signup_flow, affiliate_channel, affiliate_provider))
-
-```
 
 and re-fit the Naive Bayes classifier. The results are as shown below:  
 
 ```{r Fit Model on a subset of predictors}
-airbnb_data_sub <- airbnb_data %>% 
-  select(-c(signup_app, signup_flow, affiliate_channel, affiliate_provider))
-
 res_sub <- NB_fitting(airbnb_data_sub)
 res_sub
 ```
 
 ## Further tackled imbalanced classification 
 Either in each fold or the whole dataset, the proportion of categories in the response vairable is: 
-* `other`: 15%  
+* `other`: 15%  (minority)
 * `US`: 37%  
 * `NDF`:  48%  
 
 ```{r}
 # check the imbalance in the repsonse variable
-
 # the whole dataset
 destination_prop_tb(airbnb_data_sub)
 # each fold
@@ -109,17 +121,14 @@ for (i in 1:5) {
 }
 ```
 
-Ref:  
-1. https://kiwidamien.github.io/how-to-do-cross-validation-when-upsampling-data.html  
-2. https://www.analyticsvidhya.com/blog/2016/03/practical-guide-deal-imbalanced-classification-problems/   
-3. https://www.baeldung.com/cs/naive-bayes-classification-performance
 
-
-```{r}
+```{r Fit a NB model on resampled model}
+# "up" means oversampling, and "down" mean undersampling
 res_sub_resample <- NB_fitting_sampling(airbnb_data_sub)
 res_sub_resample
 ```
 
+## Summary of classification rates
 ```{r Print the results of full model, sub model and resampled model}
 res_summary <- cbind(
   res_full %>%
@@ -135,5 +144,11 @@ res_summary <- cbind(
 res_summary %>% 
   select(full_50, sub_50, up_50, down_50, full_80, sub_80, up_80, down_80)
 ```
+
+
+
+
+
+
 
 
