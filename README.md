@@ -23,7 +23,7 @@ The structure of the repository are arranged into the following way:
   * [rf_results.RData](\Data\rf_results.RData): the results of the random forest models, including the misclassification rates of 50% and 80% prediction interval, rate misclassification of the point prediction, AUC, and the interval score for each random forest model
   * [rfe_1.Rdata](\Data\rfe_1.Rdata), [rfe_2.Rdata](\Data\rfe_2.Rdata), [rfe_3.Rdata](\Data\rfe_3.Rdata), [rfe_4.Rdata](\Data\rfe_4.Rdata), and [rfe_5.Rdata](\Data\rfe_5.Rdata): the random forest recursive feature elimination object for each fold  
   * [train_users_2.csv](\Data\train_users_2.csv): the original `user` dataset    
-  * [session.csv](https://drive.google.com/file/d/1l24LMftgIZfgZjAno8dELdJEsGuK0mPJ/view): the original session dataset  
+  * [session.csv](https://drive.google.com/file/d/1l24LMftgIZfgZjAno8dELdJEsGuK0mPJ/view): the original `session` dataset  
 
 * **Figures**: some plots of visualizations  
 * **Presentation**: slides of the presentation  
