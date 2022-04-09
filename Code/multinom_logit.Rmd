@@ -1,0 +1,61 @@
+---
+title: "Multinomial Logistic Regression"  
+author: Shuyi Tan  
+output: github_notebook  
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r}
+suppressPackageStartupMessages(library(nnet))
+suppressPackageStartupMessages(library(caret))
+suppressPackageStartupMessages(library(tidyverse))
+
+```
+
+```{r Source the wrapper functions}
+source(paste0(here::here(), '/Code/helper_function.R'))
+source(paste0(here::here(), '/Code/modeling_function.R'))
+```
+
+```{r}
+load(paste0(here::here(), "/Data/airbnb_cleaned.Rdata"))
+
+# Rename the dataset to avoid misunderstanding 
+airbnb_data <- airbnb_cleaned
+
+# move the response variable to the last position for convenience
+airbnb_data <-
+  airbnb_data %>% relocate(country_destination, .after = 'log_age')
+```
+
+
+
+
+## Full model 
+
+```{r}
+full_multinom_logit <- multinom_logit_fitting(airbnb_data)
+full_multinom_logit
+```
+
+## Subset Model with StepwiseAIC 
+
+```{r}
+sub_multinom_logit <- multinom_logit_fitting(airbnb_data, stepwise = TRUE)
+sub_multinom_logit
+```
+
+## Oversampling
+```{r}
+multinom_logit_oversample <- multinom_logit_resampling(airbnb_data, 'over')
+multinom_logit_oversample
+```
+
+## Undersampling
+
+```{r}
+multinom_logit_oversample <- multinom_logit_resampling(airbnb_data, 'under')
+multinom_logit_oversample
+```
+
