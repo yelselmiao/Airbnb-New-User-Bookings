@@ -294,3 +294,15 @@ ComputeIntervalScore <- function(predProb, actual, alpha) {
 }
 
 
+#' Extract the name item from the every element of the named list
+#'
+#' @param named_list a named list
+#' @param name character scalar, the name of the item
+#'
+#' @return a list of named item
+#'
+#' @examples
+extract_list_item <- function(named_list, name) {
+  return(sapply(named_list, "[", name))
+}
+
