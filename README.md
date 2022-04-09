@@ -3,7 +3,7 @@
 ## Overview 
 Since 2008, an increasing number of travelers have chosen to book their accommodation through Airbnb instead of traditional hotels. Through analyzing new users’ data, Airbnb can personalize and prioritize recommendations and advertisements for each user to provide better services.
 
-After cleaning, transformation, and joining the `user` and `session` datatsets, we acquired a dataset of $34074$ rows and $20$ columns. We trained and made predictions with three models:   
+After cleaning, transformation, and joining the `user` and `session` datatsets, we acquired a dataset of 34074 rows and 20 columns. We trained and made predictions with three models:   
 * _Naive Bayes_  
 * _Random Forest_  
 * _Multinomial Logistic Regression_ 
