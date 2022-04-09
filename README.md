@@ -20,10 +20,11 @@ The structure of the repository are arranged into the following way:
 
 * **Data**: this folder stores the data and modeling outcomes:  
   * [airbnb_cleaned.Rdata](\Data\airbnb_cleaned.Rdata): the final cleaned dataset]  
-  * [rf_results.RData](\Data\rf_results.RData): the results of the random forest models, including the misclassification rates of 50% and 80% prediction interval, rate misclassification of the point prediction, AUC, and the interval score for each random forest model
+  * [rf_results.RData](\Data\rf_results.RData): the results of the random forest models, including the misclassification rates of 50% and 80% prediction interval, rate misclassification of the point prediction, AUC, and the interval score for each random forest model  
+  * [rf_model_objects.RData](https://drive.google.com/file/d/1ujC5eLZP8lob5y57CtPvHZrTrkW7FHor/view?usp=sharing): these are four fitted random forest model objects. Since it's too big for Github, we uploaded to Google. You may click on the link and download it to take a closer look at the model 
   * [rfe_1.Rdata](\Data\rfe_1.Rdata), [rfe_2.Rdata](\Data\rfe_2.Rdata), [rfe_3.Rdata](\Data\rfe_3.Rdata), [rfe_4.Rdata](\Data\rfe_4.Rdata), and [rfe_5.Rdata](\Data\rfe_5.Rdata): the random forest recursive feature elimination object for each fold  
   * [train_users_2.csv](\Data\train_users_2.csv): the original `user` dataset    
-  * [session.csv](https://drive.google.com/file/d/1l24LMftgIZfgZjAno8dELdJEsGuK0mPJ/view): the original `session` dataset  
+  * [session.csv](https://drive.google.com/file/d/1l24LMftgIZfgZjAno8dELdJEsGuK0mPJ/view): the original `session` dataset; it is big for Github as well. You may need to download it if you would lik to run [1_Data_Cleaning_and_EDA](https://github.com/yelselmiao/Airbnb-New-User-Bookings/blob/master/Code/Data_Cleaning_and_EDA.Rmd)
 
 * **Figures**: some plots of visualizations  
 * **Presentation**: slides of the presentation  
