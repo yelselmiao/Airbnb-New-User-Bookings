@@ -103,6 +103,33 @@ rf_misclass["avg",] <- colMeans(rf_misclass)
 rf_misclass
 ```
 
+```{r Point prediction 50}
+point_miss50 <- lapply(list(full = rf_full_result, sub = rf_sub_result,
+               under = rf_under_full_result, over = rf_over_full_result), function(result){
+                 misclass_point <- extract_list_item(result, "mis_class_point") %>% 
+                   extract_list_item("pred50") %>% unlist()
+                 misclass_point <- c(misclass_point, mean(misclass_point))
+                 names(misclass_point) <- c("Fold1", "Fold2", "Fold3", "Fold4", "Fold5", "Avg")
+                 return(misclass_point)
+})
+
+point_miss50
+```
+
+```{r Point Missclass 8-}
+point_miss80 <- lapply(list(full = rf_full_result, sub = rf_sub_result,
+               under = rf_under_full_result, over = rf_over_full_result), function(result){
+                 misclass_point <- extract_list_item(result, "mis_class_point") %>% 
+                   extract_list_item("pred80") %>% unlist()
+                 misclass_point <- c(misclass_point, mean(misclass_point))
+                 names(misclass_point) <- c("Fold1", "Fold2", "Fold3", "Fold4", "Fold5", "Avg")
+                 return(misclass_point)
+})
+
+point_miss80
+```
+
+
 ```{r AUC}
 # Obtain the AUC of the models
 auc <- lapply(list(full = rf_full_result, sub = rf_sub_result,
