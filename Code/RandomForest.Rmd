@@ -84,11 +84,11 @@ save(rf_full_result, rf_under_full_result, rf_over_full_result,
 
 
 ```{r Get Misclassification Rate}
-load(paste0(here::here(), "/Data/rf_model_objects.RData"))
-mis_class_sub <- sapply(rf_sub_result, "[", "mis_class")
-mis_class_ful <- sapply(rf_full_result, "[", "mis_class")
-mis_class_ful_under <- sapply(rf_under_full_result, "[", "mis_class")
-mis_class_ful_over <- sapply(rf_over_full_result, "[", "mis_class")
+# load(paste0(here::here(), "/Data/rf_model_objects.RData"))
+mis_class_sub <- extract_list_item(rf_sub_result, "mis_class")
+mis_class_ful <- extract_list_item(rf_full_result, "mis_class")
+mis_class_ful_under <- extract_list_item(rf_under_full_result, "mis_class")
+mis_class_ful_over <- extract_list_item(rf_over_full_result, "mis_class")
 
 rf_misclass <- data.frame(full_50 = sapply(mis_class_ful, "[", "pred50") %>% unlist(),
                           sub_50 = sapply(mis_class_sub, "[", "pred50") %>% unlist(),
@@ -102,40 +102,45 @@ rf_misclass <- data.frame(full_50 = sapply(mis_class_ful, "[", "pred50") %>% unl
 rownames(rf_misclass) <- c("Fold1", "Fold2", "Fold3", "Fold4", "Fold5")
 
 rf_misclass["avg",] <- colMeans(rf_misclass)
+
+rf_misclass
 ```
 
 ```{r AUC}
-# Obtain the AUC of the best model -- oversampling model
-auc <- lapply(as.list(1:5), function(t){
-  test_ROC <- multiclass.roc(extract_folds(df = airbnb_data, target_fold = t, fold_idx = folds)$country_destination, 
-                  rf_over_full_result[[t]]$pred[,2]) 
-  test_ROC$auc
-  
+# Obtain the AUC of the models
+lapply(list(full = rf_full_result, sub = rf_sub_result,
+               under = rf_under_full_result, over = rf_over_full_result), function(result){
+                 auc <- extract_list_item(result, "auc") %>% unlist()
+                 auc <- c(auc, mean(auc))
+                 names(auc) <- c("Fold1", "Fold2", "Fold3", "Fold4", "Fold5", "Avg")
+                 return(auc)
 })
-
-auc <- auc %>% unlist()
-auc <- c(auc, mean(auc))
-auc
 ```
 
-```{r Interval Score}
-# Calculate the interval score for the best model
-IS50 <- lapply(as.list(1:5), function(fold){
-  IS <- ComputeIntervalScore(rf_over_full_result[[fold]]$pred,
-                             extract_folds(airbnb_data, fold, folds)$country_destination,
-                             0.5) }) %>% unlist()
-IS50 <- c(IS50, mean(IS50))
-
-IS80 <- lapply(as.list(1:5), function(fold){
-  IS <- ComputeIntervalScore(rf_over_full_result[[fold]]$pred,
-                             extract_folds(airbnb_data, fold, folds)$country_destination,
-                             0.2) }) %>% unlist()
-IS80 <- c(IS80, mean(IS80))
-
-IS50
-IS80
+```{r Interval Score 50}
+# Calculate the interval score for 50% interval
+lapply(list(full = rf_full_result, sub = rf_sub_result,
+               under = rf_under_full_result, over = rf_over_full_result), function(result){
+                 is50 <- extract_list_item(result, "interval_score") %>%
+                   extract_list_item("is50") %>% unlist()
+                 is50 <- c(is50, mean(is50))
+                 names(is50) <- c("Fold1", "Fold2", "Fold3", "Fold4", "Fold5", "Avg")
+                 return(is50)
+})
 ```
 
+
+```{r Interval Score 80}
+# Calculate the interval score for 50% interval
+lapply(list(full = rf_full_result, sub = rf_sub_result,
+               under = rf_under_full_result, over = rf_over_full_result), function(result){
+                 is80 <- extract_list_item(result, "interval_score") %>%
+                   extract_list_item("is80") %>% unlist()
+                 is80 <- c(is80, mean(is80))
+                 names(is80) <- c("Fold1", "Fold2", "Fold3", "Fold4", "Fold5", "Avg")
+                 return(is80)
+})
+```
 
 ## Save rf_model_realvant info
 ```{r}
