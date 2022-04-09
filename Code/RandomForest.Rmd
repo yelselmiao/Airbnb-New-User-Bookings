@@ -26,12 +26,55 @@ airbnb_data <- airbnb_cleaned
 rm(airbnb_cleaned)
 ```
 
+```{r Examine RFE results }
+# source code to run recursive feature elimination for each training fold
+# for (k in 1:5){
+#   train_folds <- airbnb_cleaned[-folds[[k]], ]
+#   res <- rfe_rf_procedure(train_folds)
+#   save(res, file = paste0(here::here(), '/Data/rfe_',k, '.Rdata'))
+# }
+
+# Load the RFE results from each folds 
+res_rfe_sub_1 <- loadRData(paste0(here::here(), '/Data/rfe_1.Rdata'))
+res_rfe_sub_2 <- loadRData(paste0(here::here(), '/Data/rfe_2.Rdata'))
+res_rfe_sub_3 <- loadRData(paste0(here::here(), '/Data/rfe_3.Rdata'))
+res_rfe_sub_4 <- loadRData(paste0(here::here(), '/Data/rfe_4.Rdata'))
+res_rfe_sub_5 <- loadRData(paste0(here::here(), '/Data/rfe_5.Rdata'))
+
+# check what would be the best number of variables 
+# by plot
+plot(res_rfe_sub_1, type = c('g','o'), main="Fold 2-5")
+plot(res_rfe_sub_2, type = c('g','o'), main="Fold 1 and 3-5")
+plot(res_rfe_sub_3, type = c('g','o'), main="Fold 1-2 and 4-5")
+plot(res_rfe_sub_4, type = c('g','o'), main="Fold 1-3 and 5")
+plot(res_rfe_sub_5, type = c('g','o'), main="Fold 1-4")
+
+# by number 
+res_rfe_sub_1$bestSubset
+res_rfe_sub_2$bestSubset
+res_rfe_sub_3$bestSubset
+res_rfe_sub_4$bestSubset
+res_rfe_sub_5$bestSubset
+
+```
+
+```{r Check top5 most important variable}
+res_rfe_sub_1$optVariables[1:5]
+res_rfe_sub_2$optVariables[1:5]
+res_rfe_sub_3$optVariables[1:5]
+res_rfe_sub_4$optVariables[1:5]
+res_rfe_sub_5$optVariables[1:5]
+```
 
 
 ```{r}
 # Each model take about 30 mins to run, 2 hr to run the whole thing
 rf_full_result <- rf_5fold_cross(airbnb_data, folds, type ="full")
-# rf_sub_result <- rf_5fold_cross(airbnb_data, folds, type ="sub")
+
+#' From rfe it is found that models with 19 variables are deemed to be the best subsetted model
+#' This is just the same thing as the full model
+rf_sub_result <- rf_full_result
+
 rf_over_full_result <- rf_5fold_cross(airbnb_data, folds, type ="over")
 rf_under_full_result <- rf_5fold_cross(airbnb_data, folds, type ="under")
 
@@ -42,17 +85,17 @@ save(rf_full_result, rf_under_full_result, rf_over_full_result,
 
 ```{r Get Misclassification Rate}
 load(paste0(here::here(), "/Data/rf_model_objects.RData"))
-# mis_class_sub <- sapply(rf_sub_result, "[", "mis_class")
+mis_class_sub <- sapply(rf_sub_result, "[", "mis_class")
 mis_class_ful <- sapply(rf_full_result, "[", "mis_class")
 mis_class_ful_under <- sapply(rf_under_full_result, "[", "mis_class")
 mis_class_ful_over <- sapply(rf_over_full_result, "[", "mis_class")
 
 rf_misclass <- data.frame(full_50 = sapply(mis_class_ful, "[", "pred50") %>% unlist(),
-                          # sub_50 = sapply(mis_class_sub, "[", "pred50") %>% unlist(),
+                          sub_50 = sapply(mis_class_sub, "[", "pred50") %>% unlist(),
                           under_50 = sapply(mis_class_ful_under, "[", "pred50") %>% unlist(),
                           over_50 = sapply(mis_class_ful_over, "[", "pred50") %>% unlist(),
                           full_80 = sapply(mis_class_ful, "[", "pred80") %>% unlist(),
-                          # sub_80 = sapply(mis_class_sub, "[", "pred80") %>% unlist(),
+                          sub_80 = sapply(mis_class_sub, "[", "pred80") %>% unlist(),
                           under_80 = sapply(mis_class_ful_under, "[", "pred80") %>% unlist(),
                           over_80 = sapply(mis_class_ful_over, "[", "pred80") %>% unlist()
                           )
