@@ -13,6 +13,11 @@ suppressPackageStartupMessages(library(tidyverse))
 
 ```
 
+```{r Source the wrapper functions}
+source(paste0(here::here(), '/Code/helper_function.R'))
+source(paste0(here::here(), '/Code/modeling_function.R'))
+```
+
 ```{r}
 load(paste0(here::here(), "/Data/airbnb_cleaned.Rdata"))
 
