@@ -11,10 +11,10 @@ After cleaning, transformation, and joining the `user` and `session` datatsets, 
 ## Description of Repository  
 The structure of the repository are arranged into the following way:  
 * **Code**: this folder stores the R codes of analysis    
-  * [Data_Cleaning_and_EDA](https://github.com/yelselmiao/Airbnb-New-User-Bookings/blob/master/Code/Data_Cleaning_and_EDA.Rmd): this notebook contains the code of the data cleaning and transforming of the `user` and `session` datatsets, as well as some exploratory analysis    
-  * [multinomial_logit.Rmd](https://github.com/yelselmiao/Airbnb-New-User-Bookings/blob/master/Code/multinom_logit.Rmd): this notebook stores the codes of training and predicting with multinomial logistic regression  
+  * [1_Data_Cleaning_and_EDA](https://github.com/yelselmiao/Airbnb-New-User-Bookings/blob/master/Code/Data_Cleaning_and_EDA.Rmd): this notebook contains the code of the data cleaning and transforming of the `user` and `session` datatsets, as well as some exploratory analysis    
   * [Naive_Bayes.Rmd](https://github.com/yelselmiao/Airbnb-New-User-Bookings/blob/master/Code/Naive_Bayes.Rmd): this notebook stores the codes of training and predicting with naive Bayes classifiers    
   * [RandomForest.Rmd](https://github.com/yelselmiao/Airbnb-New-User-Bookings/blob/master/Code/RandomForest.Rmd): this notebook stores the codes of training and predicting with random forest models  
+  *  [multinomial_logit.Rmd](https://github.com/yelselmiao/Airbnb-New-User-Bookings/blob/master/Code/multinom_logit.Rmd): this notebook stores the codes of training and predicting with multinomial logistic regression  
   * [helper_function.R](https://github.com/yelselmiao/Airbnb-New-User-Bookings/blob/master/Code/helper_function.R): this R script contains the helper/wrapper functions of our analysis   
   * [modeling_function.R](https://github.com/yelselmiao/Airbnb-New-User-Bookings/blob/master/Code/modeling_function.R): this R script contains the some helper functions specifically for the modeling process  
 
