@@ -155,15 +155,14 @@ randomforest_model <- function(training, holdout, type = "full") {
   # table(holdout$country_destination, pred_interval$pred50)
   # table(holdout$country_destination, pred_interval$pred80)
   mis_class <- lapply(pred_interval, get_misclass_rate, actual = holdout$country_destination)
-  mis_class_point <- lapply(pred_interval, get_point_misclass_rate, actual = holdout$country_destination)
-  
+
   # get interval score and auc
   IS50 <- ComputeIntervalScore(rf_pred, holdout$country_destination, 0.5)
   IS80 <- ComputeIntervalScore(rf_pred, holdout$country_destination, 0.2)
   auc <- multiclass.roc(holdout$country_destination, rf_pred[,2])$auc
   
   return(list(model = rf, pred = rf_pred, pred_interval = pred_interval, 
-              mis_class = mis_class, mis_class_point = mis_class_point,
+              mis_class = mis_class,
               interval_score = list(is50 = IS50, is80 = IS80), 
               auc = auc))
 }
