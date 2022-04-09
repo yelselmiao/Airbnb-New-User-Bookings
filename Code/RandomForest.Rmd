@@ -77,9 +77,6 @@ rf_sub_result <- rf_full_result
 
 rf_over_full_result <- rf_5fold_cross(airbnb_data, folds, type ="over")
 rf_under_full_result <- rf_5fold_cross(airbnb_data, folds, type ="under")
-
-save(rf_full_result, rf_under_full_result, rf_over_full_result,
-     file = paste0(here::here(), "/Data/rf_model_objects.RData"))
 ```
 
 
@@ -108,18 +105,20 @@ rf_misclass
 
 ```{r AUC}
 # Obtain the AUC of the models
-lapply(list(full = rf_full_result, sub = rf_sub_result,
+auc <- lapply(list(full = rf_full_result, sub = rf_sub_result,
                under = rf_under_full_result, over = rf_over_full_result), function(result){
                  auc <- extract_list_item(result, "auc") %>% unlist()
                  auc <- c(auc, mean(auc))
                  names(auc) <- c("Fold1", "Fold2", "Fold3", "Fold4", "Fold5", "Avg")
                  return(auc)
 })
+
+auc
 ```
 
 ```{r Interval Score 50}
 # Calculate the interval score for 50% interval
-lapply(list(full = rf_full_result, sub = rf_sub_result,
+is50 <- lapply(list(full = rf_full_result, sub = rf_sub_result,
                under = rf_under_full_result, over = rf_over_full_result), function(result){
                  is50 <- extract_list_item(result, "interval_score") %>%
                    extract_list_item("is50") %>% unlist()
@@ -127,12 +126,13 @@ lapply(list(full = rf_full_result, sub = rf_sub_result,
                  names(is50) <- c("Fold1", "Fold2", "Fold3", "Fold4", "Fold5", "Avg")
                  return(is50)
 })
+is50
 ```
 
 
 ```{r Interval Score 80}
 # Calculate the interval score for 50% interval
-lapply(list(full = rf_full_result, sub = rf_sub_result,
+is80 <- lapply(list(full = rf_full_result, sub = rf_sub_result,
                under = rf_under_full_result, over = rf_over_full_result), function(result){
                  is80 <- extract_list_item(result, "interval_score") %>%
                    extract_list_item("is80") %>% unlist()
@@ -140,16 +140,17 @@ lapply(list(full = rf_full_result, sub = rf_sub_result,
                  names(is80) <- c("Fold1", "Fold2", "Fold3", "Fold4", "Fold5", "Avg")
                  return(is80)
 })
+is80
 ```
 
 ## Save rf_model_realvant info
 ```{r}
-save(rf_full_result, rf_sub_result, rf_under_full_result, rf_over_full_result,
-     file = paste0(here::here(), "/Data/rf_model_results.RData"))
+save(rf_full_result, rf_under_full_result, rf_over_full_result,
+     file = paste0(here::here(), "/Data/rf_model_objects.RData"))
 ```
 
 ```{r}
-save(rf_misclass, auc, file = paste0(here::here(), "/Data/rf_results.RData"))
+save(rf_misclass, auc, is50, is80, file = paste0(here::here(), "/Data/rf_results.RData"))
 ```
 
 
