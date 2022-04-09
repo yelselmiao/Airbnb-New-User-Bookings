@@ -26,3 +26,13 @@ The structure of the repository are arranged into the following way:
 
 * **Figures**: some plots of visualizations  
 * **Presentation**: slides of the presentation  
+
+## How to Run the Code
+To reproduce our result, please run the notebooks in the `Code` fold in the following order:   
+- 1_Data_Cleaning_and_EDA  
+- 2_Naive_Bayes.Rmd  
+- 3_RandomForest.Rmd  
+- 4_multinomial_logit.Rmd  
+
+
+ 
