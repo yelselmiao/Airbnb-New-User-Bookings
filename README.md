@@ -1,7 +1,7 @@
 # Airbnb New User Bookings Project
 
 ## Overview 
-Since 2008, an increasing number of travelers have chosen to book their accommodation through Airbnb instead of traditional hotels. Through analyzing new users’ data, Airbnb can personalize and prioritize recommendations and advertisements for each user to provide better services.
+Since 2008, an increasing number of travelers have chosen to book their accommodation through Airbnb instead of traditional hotels. Through analyzing new users’ data, Airbnb can personalize and prioritize recommendations and advertisements for each user to provide better services. The Kaggle competition can be found [here](https://www.kaggle.com/competitions/airbnb-recruiting-new-user-bookings/overview). 
 
 After cleaning, transformation, and joining the `user` and `session` datatsets, we acquired a dataset of 34074 rows and 20 columns. We trained and made predictions with three models:   
 * _Naive Bayes_  
@@ -19,17 +19,17 @@ The structure of the repository are arranged into the following way:
   * [modeling_function.R](https://github.com/yelselmiao/Airbnb-New-User-Bookings/blob/master/Code/modeling_function.R): this R script contains the some helper functions specifically for the modeling process  
 
 * **Data**: this folder stores the data and modeling outcomes:  
-  * `airbnb_cleaned.Rdata`: the final cleaned dataset  
-  * `rf_results.RData`: the results of the random forest models  
-  * `rfe_1.Rdata`, `rfe_2.Rdata`, `rfe_3.Rdata`, `rfe_4.Rdata`, and `rfe_5.Rdata`: the random forest recursive feature elimination object for each fold  
-  * `train_users_2.csv`: the original `user` dataset  
+  * [airbnb_cleaned.Rdata](\Data\airbnb_cleaned.Rdata): the final cleaned dataset]  
+  * [rf_results.RData](\Data\rf_results.RData): the results of the random forest models  
+  * [rfe_1.Rdata](\Data\rfe_1.Rdata), [rfe_2.Rdata](\Data\rfe_2.Rdata), [rfe_3.Rdata](\Data\rfe_3.Rdata), [rfe_4.Rdata](\Data\rfe_4.Rdata), and [rfe_5.Rdata](\Data\rfe_5.Rdata): the random forest recursive feature elimination object for each fold  
+  * [train_users_2.csv](\Data\train_users_2.csv): the original `user` dataset  
 
 * **Figures**: some plots of visualizations  
 * **Presentation**: slides of the presentation  
 
 ## How to Run the Code
 To reproduce our result, please run the notebooks in the `Code` fold in the following order:   
-- 1_Data_Cleaning_and_EDA  
+- 1_Data_Cleaning_and_EDA.Rmd  
 - 2_Naive_Bayes.Rmd  
 - 3_RandomForest.Rmd  
 - 4_multinomial_logit.Rmd  
