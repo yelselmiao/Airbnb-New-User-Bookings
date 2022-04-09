@@ -6,6 +6,19 @@ editor_options:
   chunk_output_type: inline
 ---
 
+This file fits and tests four multinomial logitstic regression model:  
+- Full model  
+- Subset model based on stepwiseAIC  
+- Oversampled full model  
+- Undersampled  full model 
+
+Models are evaluated by the following metric based on five-fold cross validation:    
+- `mis_res_pred_int`: misclassification rate of 50% and 80% prediction interval  
+- `mis_res_point_pred`: misclassification rate of point prediction   
+- `IS`: interval score  
+- `AUC`:  AUC value 
+
+
 ```{r}
 suppressPackageStartupMessages(library(nnet))
 suppressPackageStartupMessages(library(caret))
