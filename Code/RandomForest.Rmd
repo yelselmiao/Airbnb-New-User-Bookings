@@ -21,6 +21,7 @@ library(tidyverse)
 library(caret)
 library(randomForest)
 library(pROC)
+library(ggplot2)
 
 airbnb_data <- airbnb_cleaned
 rm(airbnb_cleaned)
@@ -65,6 +66,14 @@ res_rfe_sub_3$optVariables[1:5]
 res_rfe_sub_4$optVariables[1:5]
 res_rfe_sub_5$optVariables[1:5]
 ```
+
+```{r Plots}
+airbnb_data %>% ggplot(aes(x = country_destination, y = log_unique_actionTrp)) + geom_boxplot()
+airbnb_data %>% ggplot(aes(x = country_destination, y = date_account_created)) + geom_violin()
+airbnb_data %>% ggplot(aes(x = country_destination, y = date_first_active)) +  geom_violin()
+airbnb_data %>% ggplot(aes(x = country_destination, y = log_total_action)) + geom_boxplot()
+```
+
 
 
 ```{r}
@@ -168,6 +177,5 @@ save(rf_full_result, rf_under_full_result, rf_over_full_result,
 save(rf_misclass, point_pred, 
      auc, is50, is80, file = paste0(here::here(), "/Data/rf_results.RData"))
 ```
-
 
 
