@@ -6,9 +6,17 @@ editor_options:
   chunk_output_type: inline
 ---
 
-This notebook contains the modeling process of naive Bayes. Starting from a full model, we then moved to fit a subset model after removing highly correlated variables. Besides, we also trying two models with the oversampled and undersampled data respetively using a subset of variables from the second model.   
+This notebook contains the modeling process of naive Bayes. Starting from a full model, we then moved to fit a subset model after removing highly correlated variables. Besides, we also trying two models with the oversampled and undersampled data respetively using a subset of variables from the second model. In short, there are four models:  
+- Full model  
+- Subset model  
+- Oversampled subset model  
+- Undersampled subset model  
 
-Each model is evaluated with five-fold misclassification rates based on 50% and 80% prediction interval. 
+Models are evaluated by the following metric based on five-fold cross validation:    
+- `mis_res_pred_int`: misclassification rate of 50% and 80% prediction interval  
+- `mis_res_point_pred`: misclassification rate of point prediction   
+- `IS`: interval score  
+- `AUC`:  AUC value (optional)  
 
 ```{r Set up Package}
 suppressPackageStartupMessages(library(tidyverse))
