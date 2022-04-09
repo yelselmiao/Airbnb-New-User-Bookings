@@ -8,7 +8,7 @@ editor_options:
 
 This notebook contains the modeling process of naive Bayes. Starting from a full model, we then moved to fit a subset model after removing highly correlated variables. Besides, we also trying two models with the oversampled and undersampled data respetively using a subset of variables from the second model.   
 
-Each model is evaluated with five-fold misclassification rate based on 50% and 80% prediction interval. 
+Each model is evaluated with five-fold misclassification rates based on 50% and 80% prediction interval. 
 
 ```{r Set up Package}
 suppressPackageStartupMessages(library(tidyverse))
@@ -30,7 +30,7 @@ source(paste0(here::here(), '/Code/modeling_function.R'))
 load("~/Desktop/Academic/STAT447/Airbnb-New-User-Bookings/Data/airbnb_cleaned.Rdata")
 
 # Rename the dataset to avoid misunderstanding 
-airbnb_data <- airbnb_train
+airbnb_data <- airbnb_cleaned
 
 # move the response variable to the last position for convenience
 airbnb_data <-
@@ -121,29 +121,17 @@ for (i in 1:5) {
 }
 ```
 
-
-```{r Fit a NB model on resampled model}
-# "up" means oversampling, and "down" mean undersampling
-res_sub_resample <- NB_fitting_sampling(airbnb_data_sub)
-res_sub_resample
+### Oversampling
+```{r Fit a NB model with over sampling}
+res_sub_oversample <- NB_fitting_resampling(airbnb_data_sub, 'over')
+res_sub_oversample
+```
+### Undersampling 
+```{r Fit a NB model with under sampling}
+res_sub_undersample <- NB_fitting_resampling(airbnb_data_sub, 'under')
+res_sub_undersample
 ```
 
-## Summary of classification rates
-```{r Print the results of full model, sub model and resampled model}
-res_summary <- cbind(
-  res_full %>%
-    rename('full_50' = `50% PI`,
-           'full_80' = `80% PI`,),
-  
-  res_sub %>%
-    rename('sub_50' = `50% PI`,
-           'sub_80' = `80% PI`,),
-  
-  res_sub_resample
-)
-res_summary %>% 
-  select(full_50, sub_50, up_50, down_50, full_80, sub_80, up_80, down_80)
-```
 
 
 
