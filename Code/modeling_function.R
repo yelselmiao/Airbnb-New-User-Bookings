@@ -192,7 +192,209 @@ rf_5fold_cross <- function(df, foldidx, type = "full") {
   return(model_lists)
 }
 
+################################################## Function o fitting multinomial logistic regression
+#' Function o fitting a multinomial logistic regression
+#' @param data a dataframe
+#  @stepwise logical whethe to perform stepwise selection base on AIC
 
+multinom_logit_fitting <- function(data, stepwise = FALSE) {
+  mis_res_mat <- matrix(NA, ncol = 2, nrow = 6)
+  
+  # AUC value
+  AUC_value <- matrix(NA, ncol = 1, nrow = 6)
+  # misclassification rate of point prediction
+  mis_res_single_mat <- matrix(NA, ncol = 1, nrow = 6)
+  # interval score
+  IS_mat <- matrix(NA, ncol = 2, nrow = 6)
+  
+  
+  for (i in 1:5) {
+    holdout <- extract_folds(data, i, folds)
+    train <- data[-folds[[i]],]
+    
+    multi <-
+      multinom(country_destination ~ ., trace = FALSE, data = train)
+    if (stepwise == TRUE) {
+      multi = MASS::stepAIC(multi, trace = FALSE)
+    }
+    multi_pred <- predict(multi, newdata = holdout, type = "probs")
+    multi_label <- predict(multi, newdata = holdout)
+    pred_interval <-
+      CategoryPredInterval(multi_pred, holdout$country_destination %>% levels())
+    
+    # point prediction
+    mis_res_single_mat[i, 1] <-
+      round(sum(multi_label != holdout$country_destination) / nrow(holdout),
+            3)
+    
+    # interval score
+    IS_mat[i, 1] <-
+      round(ComputeIntervalScore(multi_pred, holdout$country_destination, 0.5),
+            3)
+    IS_mat[i, 2] <-
+      round(ComputeIntervalScore(multi_pred, holdout$country_destination, 0.2),
+            3)
+    
+    
+    # Prediction interval
+    oos_50_misclass <-
+      get_misclass_rate(holdout$country_destination, pred_interval$pred50)
+    oos_80_misclass <-
+      get_misclass_rate(holdout$country_destination, pred_interval$pred80)
+    
+    mis_res_mat[i, 1] <- round(oos_50_misclass, 3)
+    mis_res_mat[i, 2] <- round(oos_80_misclass, 3)
+    
+    # AUC
+    AUC_value[i, 1] <-
+      round(multiclass.roc(holdout$country_destination, multi_pred)$auc,
+            3)
+    
+  }
+  
+  mis_res_mat[6, 1] <- round(mean(mis_res_mat[1:5, 1]), 3)
+  mis_res_mat[6, 2] <- round(mean(mis_res_mat[1:5, 2]), 3)
+  
+  mis_res_single_mat[6, 1] <-
+    round(mean(mis_res_single_mat[1:5, 1]), 3)
+  
+  IS_mat[6, 1] <- round(mean(IS_mat[1:5, 1]), 3)
+  IS_mat[6, 2] <- round(mean(IS_mat[1:5, 2]), 3)
+  
+  # AUC value
+  AUC_value[6, 1] <- round(mean(AUC_value[1:5, 1]), 3)
+  rownames(AUC_value) <-
+    c('Fold 1', 'Fold 2', 'Fold 3', 'Fold 4', 'Fold 5', 'Avg')
+  
+  rownames(mis_res_mat) <-
+    c('Fold 1', 'Fold 2', 'Fold 3', 'Fold 4', 'Fold 5', 'Avg')
+  colnames(mis_res_mat) <- c('50% PI', '80% PI')
+  
+  
+  
+  
+  rownames(IS_mat) <-
+    c('Fold 1', 'Fold 2', 'Fold 3', 'Fold 4', 'Fold 5', 'Avg')
+  colnames(IS_mat) <- c('50% PI', '80% PI')
+  
+  rownames(mis_res_single_mat) <-
+    c('Fold 1', 'Fold 2', 'Fold 3', 'Fold 4', 'Fold 5', 'Avg')
+  
+  return(
+    list(
+      mis_res_pred_int = mis_res_mat,
+      mis_res_point_pred = mis_res_single_mat,
+      IS = IS_mat,
+      AUC = AUC_value
+    )
+  )
+  
+}         
+    
 
+#' Function o fitting a multinomial logistic regression, conditional on resampling
+#' @param data a dataframe
+#  @stepwise resample whethe to perform oversampling or undersampling
+
+multinom_logit_resampling <- function(data, resample = 'over') {
+  mis_res_mat <- matrix(NA, ncol = 2, nrow = 6)
+  # AUC value
+  AUC_value <- matrix(NA, ncol = 1, nrow = 6)
+  # misclassification rate of point prediction
+  mis_res_single_mat <- matrix(NA, ncol = 1, nrow = 6)
+  # interval score
+  IS_mat <- matrix(NA, ncol = 2, nrow = 6)
+  
+  
+  for (i in 1:5) {
+    holdout <- extract_folds(data, i, folds)
+    train <- data[-folds[[i]],]
+    
+    if (resample == 'over') {
+      train <- upSample(x = train[, -ncol(data)],
+                        y = train[, ncol(data)])
+    }
+    if (resample == 'under') {
+      train <- downSample(x = train[, -ncol(data)],
+                          y = train[, ncol(data)])
+    }
+
+    
+    multi <-
+      multinom(Class ~ ., trace = FALSE, data = train)
+
+    multi_pred <- predict(multi, newdata = holdout, type = "probs")
+    multi_label <- predict(multi, newdata = holdout)
+    pred_interval <-
+      CategoryPredInterval(multi_pred, holdout$country_destination %>% levels())
+    
+    # point prediction
+    mis_res_single_mat[i, 1] <-
+      round(sum(multi_label != holdout$country_destination) / nrow(holdout),
+            3)
+    
+    # interval score
+    IS_mat[i, 1] <-
+      round(ComputeIntervalScore(multi_pred, holdout$country_destination, 0.5),
+            3)
+    IS_mat[i, 2] <-
+      round(ComputeIntervalScore(multi_pred, holdout$country_destination, 0.2),
+            3)
+    
+    
+    # Prediction interval
+    oos_50_misclass <-
+      get_misclass_rate(holdout$country_destination, pred_interval$pred50)
+    oos_80_misclass <-
+      get_misclass_rate(holdout$country_destination, pred_interval$pred80)
+    
+    mis_res_mat[i, 1] <- round(oos_50_misclass, 3)
+    mis_res_mat[i, 2] <- round(oos_80_misclass, 3)
+    
+    # AUC
+    AUC_value[i, 1] <-
+      round(multiclass.roc(holdout$country_destination, multi_pred)$auc,
+            3)
+    
+  }
+  
+  mis_res_mat[6, 1] <- round(mean(mis_res_mat[1:5, 1]), 3)
+  mis_res_mat[6, 2] <- round(mean(mis_res_mat[1:5, 2]), 3)
+  
+  mis_res_single_mat[6, 1] <-
+    round(mean(mis_res_single_mat[1:5, 1]), 3)
+  
+  IS_mat[6, 1] <- round(mean(IS_mat[1:5, 1]), 3)
+  IS_mat[6, 2] <- round(mean(IS_mat[1:5, 2]), 3)
+  
+  # AUC value
+  AUC_value[6, 1] <- round(mean(AUC_value[1:5, 1]), 3)
+  rownames(AUC_value) <-
+    c('Fold 1', 'Fold 2', 'Fold 3', 'Fold 4', 'Fold 5', 'Avg')
+  
+  rownames(mis_res_mat) <-
+    c('Fold 1', 'Fold 2', 'Fold 3', 'Fold 4', 'Fold 5', 'Avg')
+  colnames(mis_res_mat) <- c('50% PI', '80% PI')
+  
+  
+  
+  
+  rownames(IS_mat) <-
+    c('Fold 1', 'Fold 2', 'Fold 3', 'Fold 4', 'Fold 5', 'Avg')
+  colnames(IS_mat) <- c('50% PI', '80% PI')
+  
+  rownames(mis_res_single_mat) <-
+    c('Fold 1', 'Fold 2', 'Fold 3', 'Fold 4', 'Fold 5', 'Avg')
+  
+  return(
+    list(
+      mis_res_pred_int = mis_res_mat,
+      mis_res_point_pred = mis_res_single_mat,
+      IS = IS_mat,
+      AUC = AUC_value
+    )
+  )
+  
+}         
 
 
