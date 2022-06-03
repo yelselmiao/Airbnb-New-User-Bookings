@@ -33,7 +33,7 @@ The structure of the repository is arranged into the following way:
 To reproduce our result, please run the notebooks in the `Code` fold in the following order:   
 - **1_Data_Cleaning_and_EDA.Rmd**: you may need to download the `sesson` dataset from [Kaggle](https://www.kaggle.com/competitions/airbnb-recruiting-new-user-bookings/overview) and save it into the [Data](https://github.com/yelselmiao/Airbnb-New-User-Bookings/tree/master/Data) folder before running this notebook because it's too big for Github
 - **2_Naive_Bayes.Rmd**: You can directly run this notebook without the need to download any files.   
-- **3_RandomForest.Rmd**: Sinc running random forest models is extremely time confusing, the objects of fitted random forest model are in  [rf_model_objects.RData](https://drive.google.com/file/d/1ujC5eLZP8lob5y57CtPvHZrTrkW7FHor/view?usp=sharing); and the model summary statistics are in [rf_results.RData](\Data\rf_results.RData)
+- **3_RandomForest.Rmd**: Sinc running random forest models is extremely time-consuming, the objects of fitted random forest model are in  [rf_model_objects.RData](https://drive.google.com/file/d/1ujC5eLZP8lob5y57CtPvHZrTrkW7FHor/view?usp=sharing); and the model summary statistics are in [rf_results.RData](\Data\rf_results.RData)
 - **4_multinomial_logit.Rmd**: You can directly run this notebook without the need to download any files. 
 
 
